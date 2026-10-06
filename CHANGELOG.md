@@ -21,7 +21,7 @@
 
 ### Fixed
 
-- `ScoreBands` no longer commits every intermediate keystroke (typing `-5` used to briefly make a bound unbounded). Typed text is a draft committed on blur or Enter; removing a band keeps the other bands' drafts. Closes #1.
+- `ScoreBands` no longer commits every intermediate keystroke (typing `-5` used to briefly make a bound unbounded). Typed text is a draft committed on blur or Enter; removing a band keeps the other bands' drafts, and partial text such as `-` (a number input reporting `badInput`) is never recorded as a blank, unbounded draft. Closes #1.
 - Focus ring on areas (from core 0.2.0's stylesheet) so keyboard focus is visible.
 
 ### Changed

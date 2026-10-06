@@ -175,5 +175,24 @@ describe('Standalone ScoreBands', () => {
       expect(added.min).toBe(10)
       expect(added.max).toBeUndefined()
     })
+
+    it('ignores partial number-input text (badInput) so a sibling blur cannot commit it as unbounded', () => {
+      const onChange = vi.fn()
+      const { getAllByRole } = render(<ScoreBands bands={bands} onChange={onChange} />)
+      const minimum = getAllByRole('spinbutton', { name: 'Minimum (inclusive)' })[1]
+      const maximum = getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[1] as HTMLInputElement
+      // A browser reports '' with badInput while the user is typing "-" or "3-0".
+      Object.defineProperty(maximum, 'validity', { value: { badInput: true } })
+      fireEvent.change(maximum, { target: { value: '' } })
+      // Controlled value stays '' (not the old bound), so React does not clobber what the user is typing.
+      expect(maximum.value).toBe('')
+      expect(maximum.getAttribute('aria-invalid')).toBe('true')
+      fireEvent.blur(maximum)
+      expect(onChange).not.toHaveBeenCalled()
+      fireEvent.change(minimum, { target: { value: '30' } })
+      fireEvent.blur(minimum)
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledWith([bands[0], { min: 30, max: 50, color: '#222222', label: 'Mid' }])
+    })
   })
 })
