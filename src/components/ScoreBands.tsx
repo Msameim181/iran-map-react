@@ -85,6 +85,8 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
   const limits = getBoundInputLimits(scale)
 
   const commit = (index: number) => {
+    // Partial text such as "-" is abandoned on commit: the input falls back to the band's current bound.
+    setPartial((current) => without(without(current, getDraftKey(index, 'min')), getDraftKey(index, 'max')))
     const edit = commitDraft(bands, drafts, index, scale)
     setDrafts(edit.drafts)
     if (edit.bands) emit(edit.bands)

@@ -13,7 +13,7 @@
 ### Added
 
 - `@msameim181/iran-map-react/lite` (every catalog at core's lite level) and a catalog-free `@msameim181/iran-map-react/score-bands` entry.
-- `tooltip`, `tooltipId` and `tooltipDisableStyleInjection` props. Each map has its own tooltip id; keyboard focus pins the tooltip below the element; Escape closes it; the tooltip uses `position: fixed` so the map's `overflow: hidden` no longer clips it.
+- `tooltip`, `tooltipId` (reduced to word characters and hyphens) and `tooltipDisableStyleInjection` props. Each map has its own tooltip id; keyboard focus pins the tooltip below the element; Escape closes it; the tooltip uses `position: fixed` so the map's `overflow: hidden` no longer clips it.
 - Escape clears the selection. When the selected area leaves the map, the selection is cleared and `onDeselect` fires once.
 - `'use client'` on every entry; `/*#__PURE__*/` annotations so unused entries tree-shake in esbuild and webpack (a ScoreBands-only bundle was 478 kB gzip with esbuild in 0.1.0, ~2 kB now).
 - Demo: "Data level" selector (Full / Standard / Lite / Mini) that loads core's presets on demand.
@@ -28,7 +28,7 @@
 
 - The root entry binds core's `./lean` preset; the tooltip id comes from core's `getTooltipId`.
 - "Add band" appends an open-ended band starting at the display minimum.
-- Selection changes only re-render the previous and the new selection (memoized area, island and capital-marker components).
+- Selection changes re-render only the previous and the newly selected area: area, island and capital-marker components are memoized and the handlers read the selection through a ref, so their identity never changes (a test counts renders). County-mode select ~30 ms -> ~20 ms in the demo (3,160 SVG nodes).
 - Callback props are read through a ref written in a layout effect (concurrent-render safe).
 - Installation is from npmjs.com (trusted publishing with provenance); GitHub Packages receives the same tarball.
 

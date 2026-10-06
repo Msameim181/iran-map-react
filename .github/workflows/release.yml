@@ -102,8 +102,8 @@ jobs:
         with:
           node-version: '22'
           registry-url: https://registry.npmjs.org
-      - name: Trusted publishing needs npm >= 11.5.1
-        run: npm install -g npm@^11.5.1
+      - name: Trusted publishing needs npm >= 11.5.1; pinned exactly because this job can mint an OIDC token
+        run: npm install -g npm@11.21.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: package

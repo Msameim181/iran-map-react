@@ -194,5 +194,16 @@ describe('Standalone ScoreBands', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(onChange).toHaveBeenCalledWith([bands[0], { min: 30, max: 50, color: '#222222', label: 'Mid' }])
     })
+
+    it('drops partial text on blur: the input shows the current bound again', () => {
+      const { getAllByRole } = render(<ScoreBands bands={bands} onChange={vi.fn()} />)
+      const maximum = getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[0] as HTMLInputElement
+      Object.defineProperty(maximum, 'validity', { value: { badInput: true } })
+      fireEvent.change(maximum, { target: { value: '' } })
+      expect(maximum.getAttribute('aria-invalid')).toBe('true')
+      fireEvent.blur(maximum)
+      expect(maximum.value).toBe('25')
+      expect(maximum.getAttribute('aria-invalid')).toBe('false')
+    })
   })
 })

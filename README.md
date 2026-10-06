@@ -12,6 +12,8 @@ Interactive, responsive SVG map of Iran for React: 31 provinces, 478 counties, c
 npm install @msameim181/iran-map-react
 ```
 
+Every release is published to **GitHub Packages** (the source of truth, via the release workflow) and, once the first npmjs.com publish is done, to npmjs.com as well. If `npm install` cannot find the package on npmjs.com yet, install it from GitHub Packages: add `@msameim181:registry=https://npm.pkg.github.com` to your project's `.npmrc`, and a `read:packages` token for `//npm.pkg.github.com/:_authToken=` to your user-level `~/.npmrc` (GitHub Packages requires authentication even for public packages).
+
 Requires React 16.14+ and `react-dom` (the `react-tooltip` 5 floor) and Node.js 18+ for consumers. Import the stylesheet **once** in your app entry:
 
 ```ts
@@ -64,12 +66,12 @@ Props, callbacks, CSS class names, `data-testid` attributes and defaults are unc
 
 ## Tooltips, accessibility and server rendering
 
-- Every map instance gets its own tooltip id, so several maps on one page do not share a tooltip. Pass `tooltipId` for a stable id when server rendering under React < 18 (React 18+ uses `useId`, which is hydration-safe).
+- Every map instance gets its own tooltip id, so several maps on one page do not share a tooltip. Pass `tooltipId` for a stable id when server rendering under React < 18 (a custom id is reduced to word characters and hyphens, because it is used inside CSS attribute selectors) (React 18+ uses `useId`, which is hydration-safe).
 - The tooltip follows the pointer, is pinned below the element on keyboard focus, and closes on Escape. `tooltip={false}` removes the tooltip (and the `react-tooltip` instance) entirely; the `aria-label`s stay.
 - `react-tooltip` injects a `<style>` tag at runtime. Under a strict Content-Security-Policy pass `tooltipDisableStyleInjection` (`true`, or `'core'` to keep the base styles) and ship the `react-tooltip` CSS yourself.
 - The `ScoreBands` editor keeps typed text as a draft and commits on blur or Enter (a blank bound commits as unbounded), so half-typed values never change the map. New bands are open-ended.
 - Areas, islands and (when you pass `onCapitalSelect`) capital markers are focusable buttons: Enter activates on press, Space on release, holding a key does not repeat, and Escape clears the selection.
-- If the selected area leaves the map (mode, focus or data change), the selection is cleared and `onDeselect` fires once. A `defaultSelectedArea` that is not in the map is ignored silently.
+- If the selected area leaves the map (mode, focus or data change), the selection is cleared and `onDeselect` fires once. A `defaultSelectedArea` that is not in the map at mount is dropped for good (no callback), so with catalogs that load asynchronously, render the map after they are ready or set the selection again once the area exists.
 - The package adds `'use client'`, so it works in Next.js App Router client trees, and renders on the server without a DOM.
 
 ## Bundle size
@@ -83,7 +85,7 @@ The wrapper is small; the map data is not. Figures are gzip. The wrapper's own J
 
 \* Seas alone are ~530 kB of the full level; the root entry omits them and ships provinces + province capitals only (~411 kB).
 
-`ScoreBands` on its own (`/score-bands`, or the root entry) is ~2 kB gzip with no map data in the bundle, with Vite, Rollup, esbuild and webpack alike; the repository's CI verifies this on every change.
+`ScoreBands` on its own (`/score-bands`, or the root entry) is ~2 kB gzip with no map data in the bundle, with esbuild, which the repository's CI checks on every change (the annotations and `sideEffects` settings that make this work are bundler-neutral; Rollup/Vite also tree-shake it, but are not part of the CI check).
 
 ![Nationwide county view](docs/images/demo-counties.webp)
 
@@ -300,7 +302,7 @@ The controlled editor supports bounds, labels, colors, adding/removing bands, an
 />
 ```
 
-Set `showCapitalLabels` to display names beside the points. It is disabled by default to avoid label collisions on the nationwide county view. Every marker remains keyboard-selectable and exposes its Persian/English name and WGS84 latitude/longitude in the tooltip.
+Set `showCapitalLabels` to display names beside the points. It is disabled by default to avoid label collisions on the nationwide county view. Markers are keyboard-selectable buttons when you pass `onCapitalSelect`; without it they are decorative (hover tooltip only, not focusable). Either way they expose its Persian/English name and WGS84 latitude/longitude in the tooltip.
 
 ## Seas and Iranian islands
 

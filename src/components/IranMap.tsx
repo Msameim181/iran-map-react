@@ -107,7 +107,12 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
     const [selectedAreaId, setSelectedAreaId] = useState(resolveDefaultSelectedArea(props))
     const wrapperRef = useRef<HTMLDivElement>(null)
     const instanceId = useInstanceId()
-    const tooltipId = tooltip ? (tooltipIdProp ?? getTooltipId(sanitizeId(instanceId))) : undefined
+    // The id lands in CSS attribute selectors, so a custom one is reduced to word characters and hyphens.
+    const tooltipId = tooltip
+      ? tooltipIdProp
+        ? sanitizeId(tooltipIdProp)
+        : getTooltipId(sanitizeId(instanceId))
+      : undefined
 
     const model = useMemo(
       () =>
@@ -164,19 +169,25 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
       onCapitalSelect,
       onIslandSelect,
     })
+    // The selection is read through a ref for the same reason: handler identity must not change when it does, or every
+    // memoized area would re-render on each click.
+    const selectedRef = useRef(selectedAreaId)
     useIsomorphicLayoutEffect(() => {
       callbacks.current = { onSelect, onDeselect, onHover, selectProvinceHandler, onCapitalSelect, onIslandSelect }
+      selectedRef.current = selectedAreaId
     })
 
     const clearSelection = useCallback(() => {
-      if (selectedAreaId === undefined) return
+      const current = selectedRef.current
+      if (current === undefined) return
       const { onDeselect, onHover, selectProvinceHandler } = callbacks.current
+      selectedRef.current = undefined
       setSelectedAreaId(undefined)
       onDeselect?.()
       onHover?.(null)
-      const province = getDeselectProvince(catalogs.provinces, selectedAreaId)
+      const province = getDeselectProvince(catalogs.provinces, current)
       if (province) selectProvinceHandler?.(province)
-    }, [catalogs.provinces, selectedAreaId])
+    }, [catalogs.provinces])
 
     // Selection policy: when the selected area leaves the model (mode, focus or data change), it is cleared and
     // `onDeselect` fires once. A `defaultSelectedArea` that was never in the model is dropped silently.
@@ -209,16 +220,17 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
 
     const handleSelect = useCallback(
       (area: RenderableMapArea, toggle = true) => {
-        const result = resolveAreaSelection(selectedAreaId, area, toggle)
+        const result = resolveAreaSelection(selectedRef.current, area, toggle)
         if (result.action === 'deselect') {
           clearSelection()
           return
         }
+        selectedRef.current = result.selectedId
         setSelectedAreaId(result.selectedId)
         callbacks.current.onSelect?.(result.area)
         if (result.province) callbacks.current.selectProvinceHandler?.(result.province)
       },
-      [clearSelection, selectedAreaId],
+      [clearSelection],
     )
 
     const handleAreaClick = useCallback((area: RenderableMapArea) => handleSelect(area), [handleSelect])

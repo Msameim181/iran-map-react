@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Tooltip } from 'react-tooltip'
 import {
   MAP_CLASS_NAMES,
@@ -44,6 +44,11 @@ interface TooltipPosition {
   y: number
 }
 
+const getPinnedPosition = (target: Element): TooltipPosition => {
+  const rect = target.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.bottom + 8 }
+}
+
 const IranMapView: React.FC<IranMapViewProps> = ({
   model,
   width,
@@ -75,15 +80,41 @@ const IranMapView: React.FC<IranMapViewProps> = ({
   const metrics = useMemo(() => getLabelMetrics(mapScale), [mapScale])
 
   // react-tooltip's `float` mode follows the pointer, which a keyboard focus does not provide.
-  // For keyboard focus the tooltip is pinned just below the focused element instead.
+  // For keyboard focus the tooltip is pinned just below the focused element instead, and re-pinned on scroll/resize.
   const [focusPosition, setFocusPosition] = useState<TooltipPosition>()
+  const focusTarget = useRef<Element>()
+  const clearFocusPosition = useCallback(() => {
+    focusTarget.current = undefined
+    setFocusPosition(undefined)
+  }, [])
   const handleFocus = useCallback((event: React.FocusEvent<SVGSVGElement>) => {
     const target = (event.target as Element).closest?.('[data-tooltip-id]')
-    if (!target || !target.matches(':focus-visible')) return
-    const rect = target.getBoundingClientRect()
-    setFocusPosition({ x: rect.left + rect.width / 2, y: rect.bottom + 8 })
+    if (!target) return
+    let keyboard = true
+    try {
+      keyboard = target.matches(':focus-visible')
+    } catch {
+      // Browsers without :focus-visible (Safari < 15.4, old Chromium): pin it, a pointer focus is rare on these.
+    }
+    if (!keyboard) return
+    focusTarget.current = target
+    setFocusPosition(getPinnedPosition(target))
   }, [])
-  const clearFocusPosition = useCallback(() => setFocusPosition(undefined), [])
+  const pinned = focusPosition !== undefined
+  useEffect(() => {
+    if (!pinned) return
+    const reposition = () => {
+      const target = focusTarget.current
+      if (target?.isConnected) setFocusPosition(getPinnedPosition(target))
+      else clearFocusPosition()
+    }
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [pinned, clearFocusPosition])
 
   return (
     <>
