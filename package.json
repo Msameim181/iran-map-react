@@ -1,7 +1,7 @@
 {
   "name": "@msameim181/iran-map-react",
-  "version": "0.2.1",
-  "description": "An interactive and responsive SVG map of Iran for React",
+  "version": "0.2.2",
+  "description": "React SVG map of Iran with provinces, counties, capitals, Persian names, selection, and choropleth colors",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -88,11 +88,20 @@
     "lint:package": "publint --strict && attw --pack . --exclude-entrypoints ./styles.css"
   },
   "keywords": [
-    "map",
     "iran",
     "iran-map",
+    "persian",
+    "farsi",
+    "svg-map",
     "iran-svg-map",
+    "geojson",
+    "provinces",
+    "counties",
+    "choropleth",
+    "map",
+    "typescript",
     "react",
+    "react-dom",
     "react-iran-map"
   ],
   "author": "Sima Mojtahedi",

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2 - 2026-10-06
+
+Documentation and metadata only; no code changes.
+
+### Changed
+
+- README: new opening with a one-line summary, install and a ten-line usage example, a comparison with the original `react-iran-map` and with raw GeoJSON/OSM files, the package family, and a Persian summary line. The previous content follows unchanged.
+- `llms.txt` (llmstxt.org format), also served at the root of the demo site, and `AGENTS.md` (repository guide for contributor agents, plus a section for agents that use the package).
+- `package.json`: `description` and `keywords` for discoverability.
+
 ## 0.2.1 - 2026-10-06
 
 ### Changed
