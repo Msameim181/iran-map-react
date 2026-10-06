@@ -12,7 +12,7 @@ Interactive, responsive SVG map of Iran for React: 31 provinces, 478 counties, c
 npm install @msameim181/iran-map-react
 ```
 
-Every release is published to **GitHub Packages** (the source of truth, via the release workflow) and, once the first npmjs.com publish is done, to npmjs.com as well. If `npm install` cannot find the package on npmjs.com yet, install it from GitHub Packages: add `@msameim181:registry=https://npm.pkg.github.com` to your project's `.npmrc`, and a `read:packages` token for `//npm.pkg.github.com/:_authToken=` to your user-level `~/.npmrc` (GitHub Packages requires authentication even for public packages).
+The package is published to [npmjs.com](https://www.npmjs.com/package/@msameim181/iran-map-react) (releases from 0.2.1 on carry npm provenance), so no registry configuration or token is needed. Each release is also published to **GitHub Packages**; to install from there, add `@msameim181:registry=https://npm.pkg.github.com` to your project's `.npmrc` and a `read:packages` token for `//npm.pkg.github.com/:_authToken=` to your user-level `~/.npmrc` (GitHub Packages requires authentication even for public packages).
 
 Requires React 16.14+ and `react-dom` (the `react-tooltip` 5 floor) and Node.js 18+ for consumers. Import the stylesheet **once** in your app entry:
 
