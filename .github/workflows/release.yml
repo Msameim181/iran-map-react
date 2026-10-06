@@ -1,0 +1,52 @@
+name: Release
+
+# Publishes to GitHub Packages when a version tag (v*) is pushed.
+# Prerequisite: the `file:../iran-map-core` dependency in package.json must be replaced
+# by a published @msameim181/iran-map-core version before tagging.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@msameim181'
+      - name: Verify tag matches package version
+        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - run: npm ci
+        env:
+          # Reading @msameim181/iran-map-core from GitHub Packages needs a token with read access to it.
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Optional npmjs.com publish. Enable by adding an NPM_TOKEN repository secret, then uncomment.
+  # publish-npm:
+  #   needs: publish
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '22'
+  #         registry-url: https://registry.npmjs.org
+  #     - run: npm ci && npm run build
+  #     - run: npm publish --access public --registry https://registry.npmjs.org
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

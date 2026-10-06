@@ -1,0 +1,70 @@
+name: Deploy demo to GitHub Pages
+
+# Manual only until GitHub Pages is enabled for this repo (Settings > Pages > Source: GitHub Actions).
+# Then add `push: { branches: [main] }` below.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out iran-map-react
+        uses: actions/checkout@v6
+        with:
+          path: iran-map-react
+      # Until iran-map-core is published, build it from source next to this repo (see ci.yml).
+      - name: Check out iran-map-core
+        uses: actions/checkout@v6
+        with:
+          repository: Msameim181/iran-map-core
+          path: iran-map-core
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            iran-map-react/package-lock.json
+            iran-map-core/package-lock.json
+      - name: Build core
+        working-directory: iran-map-core
+        run: npm ci && npm run build
+      - name: Install
+        working-directory: iran-map-react
+        run: npm ci
+      - name: Run tests
+        working-directory: iran-map-react
+        run: npm test
+      - name: Lint
+        working-directory: iran-map-react
+        run: npm run lint
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Build demo
+        working-directory: iran-map-react
+        run: npm run demo:build -- --base /iran-map-react/
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: iran-map-react/demo-dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
