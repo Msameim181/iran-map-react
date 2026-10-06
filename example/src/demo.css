@@ -289,6 +289,15 @@ h1 {
   grid-template-columns: repeat(2, 1fr);
 }
 
+.level-options {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.level-options button {
+  padding: 6px 2px;
+  font-size: 12px;
+}
+
 .capital-options button {
   min-height: 34px;
   padding: 6px;

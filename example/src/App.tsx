@@ -326,12 +326,12 @@ const App: React.FC = () => {
             <small>Physical coastlines replace maritime administrative envelopes.</small>
           </div>
 
-          <div className='legend-block'>
-            <div className='panel-heading'>
+          <div className='capital-control geography-control'>
+            <div className='capital-control-heading'>
               <p className='panel-kicker'>Data level</p>
               <span>{dataLevels.find((level) => level.id === loadedCatalogs.level)?.size} gzip</span>
             </div>
-            <div className='capital-options geography-options' role='radiogroup' aria-label='Map data level'>
+            <div className='capital-options level-options' role='radiogroup' aria-label='Map data level'>
               {dataLevels.map((level) => (
                 <button
                   key={level.id}
