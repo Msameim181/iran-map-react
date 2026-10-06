@@ -8,73 +8,81 @@ Interactive, responsive SVG map of Iran for React: 31 provinces, 478 counties, c
 
 ## Installation
 
-The package is published to **GitHub Packages**. Point the `@msameim181` scope at it in your project's `.npmrc`:
-
-```ini
-@msameim181:registry=https://npm.pkg.github.com
-```
-
-GitHub Packages requires authentication **even for public packages**: create a token with the `read:packages` scope and add it to your user-level `~/.npmrc` (never commit it):
-
-```ini
-//npm.pkg.github.com/:_authToken=YOUR_TOKEN
-```
-
 ```bash
 npm install @msameim181/iran-map-react
 ```
 
-Requires React 16.14+ (the `react-tooltip` 5 floor; the package itself uses no API newer than 16.8) and Node.js 22 to build the demo. The component imports its stylesheet automatically. If your setup cannot import CSS from `node_modules` (some SSR or strict bundler setups), import `@msameim181/iran-map-core/styles.css` yourself in your app entry.
+Requires React 16.14+ and `react-dom` (the `react-tooltip` 5 floor) and Node.js 18+ for consumers. Import the stylesheet **once** in your app entry:
 
-## Lean root vs `/full`
+```ts
+import '@msameim181/iran-map-react/styles.css'
+```
 
-The map data is large, so it is opt-in:
+The package no longer imports its CSS from JavaScript, so it works unchanged in Node, server rendering, Jest/Vitest and strict bundlers. (0.1.x imported it automatically; add the line above when upgrading.) The stylesheet is also what styles `ScoreBands`.
 
-| Entry                               | Bound data                               | Use it for                                                              |
-| ----------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- |
-| `@msameim181/iran-map-react`        | Provinces + province capitals            | Province maps. Smallest bundle.                                         |
-| `@msameim181/iran-map-react/full`   | Every catalog (counties, islands, seas…) | **Drop-in replacement for the legacy `react-iran-map`**, full behavior. |
-| `catalogs` prop / `createIranMap()` | Whatever you pass                        | Pay only for what you use, e.g. provinces + counties without the seas.  |
+## Entries and data levels
 
-With the lean root entry, features that need a missing catalog (county mode, `detailedCounties`, islands, seas, county capitals) are skipped, and a one-time `console.warn` names the catalog in development builds.
+The map data is large, so it is opt-in. Pick the entry that matches what you need:
+
+| Entry                                    | Bound data                           | Use it for                                                                       |
+| ---------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------- |
+| `@msameim181/iran-map-react`             | Provinces + province capitals        | Province maps. Smallest data bundle.                                             |
+| `@msameim181/iran-map-react/lite`        | Every catalog at core's "lite" level | Counties, islands and seas at ~1/10 of the full geometry size.                   |
+| `@msameim181/iran-map-react/full`        | Every catalog at full detail         | **Drop-in replacement for the legacy `react-iran-map`**, full behavior.          |
+| `@msameim181/iran-map-react/score-bands` | Nothing                              | Just the `ScoreBands` legend/editor; never pulls in map data.                    |
+| `catalogs` prop / `createIranMap()`      | Whatever you pass                    | Pay only for what you use; also the way to use the `standard` and `mini` levels. |
+
+With an entry that lacks a catalog (county mode, `detailedCounties`, islands, seas, county capitals), the feature is skipped and a one-time development-only `console.warn` names the missing catalog.
+
+`catalogs` merges field by field with the entry's defaults, so `catalogs={{ counties }}` adds counties and keeps everything else. Keep the object's fields stable (module constants) to avoid rebuilding the map.
 
 ```tsx
 import { IranMap } from '@msameim181/iran-map-react'
-import { countyBoundaries } from '@msameim181/iran-map-core/counties'
-import { provinceBoundaries } from '@msameim181/iran-map-core/provinces'
+import { countyBoundaries } from '@msameim181/iran-map-core/counties-lite'
 
-// Add counties to the lean default:
-;<IranMap mode='county' data={countyData} catalogs={{ provinces: provinceBoundaries, counties: countyBoundaries }} />
+// Lean provinces plus lite-detail counties:
+;<IranMap mode='county' data={countyData} catalogs={{ counties: countyBoundaries }} />
 ```
 
 ```tsx
 import { createIranMap } from '@msameim181/iran-map-react'
-// A map bound to your own default catalogs:
-export const IranMap = createIranMap({ provinces: provinceBoundaries, counties: countyBoundaries })
+import { miniCatalogs } from '@msameim181/iran-map-core/mini'
+
+// A map bound to your own default catalogs (the `standard`, `lite` and `mini` presets live in core):
+export const IranMap = createIranMap(miniCatalogs)
 ```
 
 ### Migrating from `react-iran-map`
 
 ```diff
 - import { IranMap, ScoreBands, countyBoundaries } from 'react-iran-map'
++ import '@msameim181/iran-map-react/styles.css'
 + import { IranMap, ScoreBands, countyBoundaries } from '@msameim181/iran-map-react/full'
 ```
 
-Props, callbacks, CSS class names, `data-testid`/ARIA attributes and defaults are unchanged. One fix: `onHover` now receives the public area (`IranMapArea`, as typed) instead of an object that also leaked `path` and `fill`.
+Props, callbacks, CSS class names, `data-testid` attributes and defaults are unchanged. Differences: `onHover` receives the public area (`IranMapArea`, as typed) instead of an object that also leaked `path` and `fill`; the SVG is `role='group'` (its children are the buttons); capital markers without an `onCapitalSelect` handler are not focusable; Space activates on key release. See the [CHANGELOG](CHANGELOG.md).
+
+## Tooltips, accessibility and server rendering
+
+- Every map instance gets its own tooltip id, so several maps on one page do not share a tooltip. Pass `tooltipId` for a stable id when server rendering under React < 18 (React 18+ uses `useId`, which is hydration-safe).
+- The tooltip follows the pointer, is pinned below the element on keyboard focus, and closes on Escape. `tooltip={false}` removes the tooltip (and the `react-tooltip` instance) entirely; the `aria-label`s stay.
+- `react-tooltip` injects a `<style>` tag at runtime. Under a strict Content-Security-Policy pass `tooltipDisableStyleInjection` (`true`, or `'core'` to keep the base styles) and ship the `react-tooltip` CSS yourself.
+- Areas, islands and (when you pass `onCapitalSelect`) capital markers are focusable buttons: Enter activates on press, Space on release, holding a key does not repeat, and Escape clears the selection.
+- If the selected area leaves the map (mode, focus or data change), the selection is cleared and `onDeselect` fires once. A `defaultSelectedArea` that is not in the map is ignored silently.
+- The package adds `'use client'`, so it works in Next.js App Router client trees, and renders on the server without a DOM.
 
 ## Bundle size
 
-Measured with a minimal Vite consumer (gzip, React DOM baseline of 51.8 kB included in the totals):
+The wrapper is small; the map data is not. Figures are gzip. The wrapper's own JavaScript is about 5 kB (plus 1.3 kB of CSS) and `react-tooltip` is roughly 15-20 kB more. Data sizes come from `@msameim181/iran-map-core` ("Choosing a level" in its README):
 
-| Bundle                                          | gzip total | Added over React DOM |
-| ----------------------------------------------- | ---------: | -------------------: |
-| React wrapper only (`dist`, ESM, core external) |     4.9 kB |                    – |
-| Stylesheet (`styles.css`)                       |     1.3 kB |                    – |
-| `ScoreBands` only                               |    69.7 kB |               ~18 kB |
-| `IranMap`, lean (provinces + capitals)          |   485.7 kB |              ~434 kB |
-| `IranMap` from `/full` with county mode         | 2,019.8 kB |            ~1,968 kB |
+| Data                                                            |     Full | Standard |   Lite |   Mini |
+| --------------------------------------------------------------- | -------: | -------: | -----: | -----: |
+| Province catalogs (provinces, province capitals, islands, seas) | ~966 kB* |   139 KB |  52 KB |  33 KB |
+| Every catalog (adds counties and county capitals)               | ~1.94 MB |   443 KB | 198 KB | 135 KB |
 
-Of the ~434 kB for the lean map, ~412 kB is the province polygon data from core; the wrapper plus `react-tooltip` is ~22 kB. The map data, not the React code, dominates the size. Seas alone are ~530 kB gzip in core.
+\* Seas alone are ~530 kB of the full level; the root entry omits them and ships provinces + province capitals only (~411 kB).
+
+`ScoreBands` on its own (`/score-bands`, or the root entry) is ~2 kB gzip with no map data in the bundle, with Vite, Rollup, esbuild and webpack alike; the repository's CI verifies this on every change.
 
 ![Nationwide county view](docs/images/demo-counties.webp)
 
@@ -366,10 +374,13 @@ These boundaries suit thematic cartography, not cadastral, hydrographic, surveyi
 
 ```bash
 git clone https://github.com/Msameim181/iran-map-react.git
-npm install          # needs a read:packages token for @msameim181/iran-map-core
-npm test             # Vitest + Testing Library
+npm ci
+npm test             # Vitest + Testing Library (sources)
+npm run test:dist    # the same kind of tests against the built dist, real react-tooltip
+npm run verify:package  # pack, install in a scratch project, check ESM/CJS/SSR/types/size
 npm run lint
-npm run build        # ESM + CJS + bundled .d.ts in dist/
+npm run build        # ESM + CJS + bundled .d.ts + styles.css in dist/
+npm run lint:package # publint + are-the-types-wrong
 npm run demo         # demo app on http://localhost:5173
 npm run demo:build -- --base /iran-map-react/
 ```

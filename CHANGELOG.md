@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0
+
+### Breaking changes (0.x)
+
+- **The stylesheet is no longer imported from JavaScript.** Add `import '@msameim181/iran-map-react/styles.css'` once in your app. In exchange the package loads in Node, server rendering, Jest and Vitest, which 0.1.x did not (`ERR_UNKNOWN_FILE_EXTENSION` on `.css`).
+- Peer dependencies are now `react >=16.14` and `react-dom >=16.14` (the real floor, set by `react-tooltip` 5).
+- `catalogs` now merges field by field with the entry's defaults instead of replacing them.
+- Space activates a focused area, island or capital on key release (like a native button) and ignores key repeat; Enter still activates on press.
+- The `<svg>` is `role='group'` instead of `role='img'`, so the buttons inside it are reachable; capital markers without `onCapitalSelect` are no longer focusable buttons.
+
+### Added
+
+- `@msameim181/iran-map-react/lite` (every catalog at core's lite level) and a catalog-free `@msameim181/iran-map-react/score-bands` entry.
+- `tooltip`, `tooltipId` and `tooltipDisableStyleInjection` props. Each map has its own tooltip id; keyboard focus pins the tooltip below the element; Escape closes it; the tooltip uses `position: fixed` so the map's `overflow: hidden` no longer clips it.
+- Escape clears the selection. When the selected area leaves the map, the selection is cleared and `onDeselect` fires once.
+- `'use client'` on every entry; `/*#__PURE__*/` annotations so unused entries tree-shake in esbuild and webpack (a ScoreBands-only bundle was 478 kB gzip with esbuild in 0.1.0, ~2 kB now).
+- Demo: "Data level" selector (Full / Standard / Lite / Mini) that loads core's presets on demand.
+- CI: Node 18/20/22 and React 16.14/17/18/19 consumer matrix on the packed tarball, publint, are-the-types-wrong, SSR with the real package, axe, StrictMode and SSR tests.
+
+### Changed
+
+- Selection changes only re-render the previous and the new selection (memoized area, island and capital-marker components).
+- Callback props are read through a ref written in a layout effect (concurrent-render safe).
+- Installation is from npmjs.com (trusted publishing with provenance); GitHub Packages receives the same tarball.
+
 ## 0.1.0
 
 First release of `@msameim181/iran-map-react`, split out of the single-package `react-iran-map` (data, logic and React in one package). Data and all computation now live in `@msameim181/iran-map-core`; this package contains only React state, events and rendering.
