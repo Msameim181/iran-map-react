@@ -156,7 +156,16 @@ jobs:
           npm --version
           npm config get registry
           ls -l package.tgz
-          npm publish package.tgz --dry-run --access public --registry https://registry.npmjs.org --tag next
+          set +e
+          out="$(npm publish package.tgz --dry-run --access public --registry https://registry.npmjs.org --tag next 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            # The registry was reached and the config accepted; the real job skips an existing version before this point.
+            echo "$out" | grep -q 'previously published' || exit "$code"
+            echo "::notice::this version is already published; the real job would skip it"
+          fi
 
   # Dry run (workflow_dispatch only). Same setup as publish-github with the same token, but only contents: read.
   dry-run-github:
@@ -180,7 +189,16 @@ jobs:
         run: |
           set -euo pipefail
           ls -l package.tgz
-          npm publish package.tgz --dry-run --access public --registry https://npm.pkg.github.com --tag next
+          set +e
+          out="$(npm publish package.tgz --dry-run --access public --registry https://npm.pkg.github.com --tag next 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            # The registry was reached and the config accepted; the real job skips an existing version before this point.
+            echo "$out" | grep -q 'previously published' || exit "$code"
+            echo "::notice::this version is already published; the real job would skip it"
+          fi
 
   github-release:
     needs: [verify, publish-github]
