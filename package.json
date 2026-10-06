@@ -112,7 +112,7 @@
   },
   "dependencies": {
     "@msameim181/iran-map-core": "^0.2.0",
-    "react-tooltip": "^5.25.0"
+    "react-tooltip": "^6.0.8"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
