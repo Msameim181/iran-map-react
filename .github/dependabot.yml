@@ -40,6 +40,11 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: vite
         update-types: ['version-update:semver-major']
+      # Dev tooling Node floor is a deliberate decision, tracked in #23.
+      - dependency-name: vitest
+        update-types: ['version-update:semver-major']
+      - dependency-name: jsdom
+        update-types: ['version-update:semver-major']
       # Runtime dependency: major upgrades only by deliberate review.
       - dependency-name: react-tooltip
         update-types: ['version-update:semver-major']
