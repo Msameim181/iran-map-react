@@ -102,7 +102,7 @@
     "react-dom": ">=16.14.0"
   },
   "dependencies": {
-    "@msameim181/iran-map-core": "^0.1.0",
+    "@msameim181/iran-map-core": "^0.2.0",
     "react-tooltip": "^5.25.0"
   },
   "devDependencies": {
