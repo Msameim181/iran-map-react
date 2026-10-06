@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-10-06
+
+### Changed
+
+- Documentation: the install instructions now describe npmjs.com as the primary registry (no `.npmrc` or token needed); GitHub Packages is documented as the alternative.
+- Release pipeline: the first release published to npmjs.com through trusted publishing (OIDC, with provenance). No code changes.
+
 ## 0.2.0
 
 ### Breaking changes (0.x)
