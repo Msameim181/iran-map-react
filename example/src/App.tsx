@@ -149,7 +149,7 @@ const App: React.FC = () => {
             IR
           </span>
           <div>
-            <p className='eyebrow'>React Iran Map / live demo</p>
+            <p className='eyebrow'>Iran Map for React / Live demo</p>
             <h1>Layer lab</h1>
           </div>
         </div>
