@@ -3,7 +3,10 @@ import { provinceCapitalMarkers } from '@msameim181/iran-map-core/capitals/provi
 import { createIranMap } from './components/IranMap'
 
 /** Lean map: province polygons and province capitals only. For counties, islands and seas use `/full` or `catalogs`. */
-export const IranMap = createIranMap({ provinces: provinceBoundaries, provinceCapitals: provinceCapitalMarkers })
+export const IranMap = /*#__PURE__*/ createIranMap({
+  provinces: provinceBoundaries,
+  provinceCapitals: provinceCapitalMarkers,
+})
 
 export { createIranMap }
 export type { IranMapProps } from './components/IranMap'

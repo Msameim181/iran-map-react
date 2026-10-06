@@ -20,7 +20,6 @@ import {
   updateBand,
 } from '@msameim181/iran-map-core'
 import type { IranMapColorBand, ScoreBandDrafts, ScoreBandField } from '@msameim181/iran-map-core'
-import '@msameim181/iran-map-core/styles.css'
 
 export interface ScoreBandsProps {
   bands: IranMapColorBand[]

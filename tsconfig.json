@@ -16,7 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@msameim181/iran-map-react": ["src/index.ts"],
-      "@msameim181/iran-map-react/full": ["src/full.ts"]
+      "@msameim181/iran-map-react/full": ["src/full.ts"],
+      "@msameim181/iran-map-react/lite": ["src/lite.ts"],
+      "@msameim181/iran-map-react/score-bands": ["src/score-bands.ts"]
     },
     "esModuleInterop": true,
     "skipLibCheck": true,

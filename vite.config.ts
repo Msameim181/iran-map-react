@@ -12,11 +12,18 @@ export default defineConfig({
     emptyOutDir: true,
     cssCodeSplit: false,
     lib: {
-      entry: { index: resolve(__dirname, 'src/index.ts'), full: resolve(__dirname, 'src/full.ts') },
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        full: resolve(__dirname, 'src/full.ts'),
+        lite: resolve(__dirname, 'src/lite.ts'),
+        'score-bands': resolve(__dirname, 'src/score-bands.ts'),
+      },
       formats: ['es', 'cjs'],
       fileName: (format, name) => `${name}.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
+      // Rollup drops module-level directives, so add it back to every chunk (Next.js app router needs it).
+      output: { banner: "'use client'" },
       external: ['react', 'react-dom', 'react-tooltip', /^@msameim181\/iran-map-core(\/.*)?$/],
     },
   },

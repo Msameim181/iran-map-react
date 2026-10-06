@@ -27,6 +27,27 @@
         "default": "./dist/full.cjs"
       }
     },
+    "./lite": {
+      "import": {
+        "types": "./dist/lite.d.ts",
+        "default": "./dist/lite.js"
+      },
+      "require": {
+        "types": "./dist/lite.d.cts",
+        "default": "./dist/lite.cjs"
+      }
+    },
+    "./score-bands": {
+      "import": {
+        "types": "./dist/score-bands.d.ts",
+        "default": "./dist/score-bands.js"
+      },
+      "require": {
+        "types": "./dist/score-bands.d.cts",
+        "default": "./dist/score-bands.cjs"
+      }
+    },
+    "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"
   },
   "sideEffects": [
@@ -49,11 +70,8 @@
   "bugs": {
     "url": "https://github.com/Msameim181/iran-map-react/issues"
   },
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
-    "build": "npm run clean && vite build && npm run build:types",
+    "build": "npm run clean && vite build && node scripts/copy-styles.mjs && npm run build:types",
     "build:types": "tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/finish-types.mjs",
     "typecheck": "tsc --noEmit",
     "demo": "vite --config example/vite.config.ts",
@@ -77,7 +95,8 @@
   "author": "Sima Mojtahedi",
   "license": "MIT",
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.14.0",
+    "react-dom": ">=16.14.0"
   },
   "dependencies": {
     "@msameim181/iran-map-core": "^0.1.0",
@@ -92,6 +111,7 @@
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
     "@vitejs/plugin-react": "^5.2.0",
+    "axe-core": "^4.10.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.0.1",
@@ -111,6 +131,12 @@
     "*": {
       "full": [
         "./dist/full.d.ts"
+      ],
+      "lite": [
+        "./dist/lite.d.ts"
+      ],
+      "score-bands": [
+        "./dist/score-bands.d.ts"
       ]
     }
   }

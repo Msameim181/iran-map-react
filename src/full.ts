@@ -2,7 +2,7 @@ import { fullCatalogs } from '@msameim181/iran-map-core/full'
 import { createIranMap } from './components/IranMap'
 
 /** Drop-in replacement for the legacy `react-iran-map`: every catalog is bound by default (~1.9 MB gzipped of data). */
-export const IranMap = createIranMap(fullCatalogs)
+export const IranMap = /*#__PURE__*/ createIranMap(fullCatalogs)
 
 export { createIranMap }
 export type { IranMapProps } from './components/IranMap'
