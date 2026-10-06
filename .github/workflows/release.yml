@@ -1,53 +1,147 @@
 name: Release
 
-# Publishes to GitHub Packages when a version tag (v*) is pushed.
-# The tag must equal the package.json version. Local `file:` dependencies are refused.
+# Runs when a version tag (v*) is pushed. The tag must be an annotated or lightweight tag on a commit that is on
+# main and equal to the package.json version. Stages:
+#   verify          read-only: lint, tests, build, package lint, consumer checks on the packed tarball
+#   publish-github  GitHub Packages (needs packages: write)
+#   publish-npm     npmjs.com via trusted publishing (OIDC, no token); skipped until the NPM_PUBLISH variable is 'true'
+#   github-release  GitHub Release with the CHANGELOG notes
+# Re-running is safe: a version that already exists on a registry or as a release is skipped.
 on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: read
-  packages: write
+permissions: {}
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag must be on main and match package.json
+        id: meta
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+          version="$(node -p "require('./package.json').version")"
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::tag $GITHUB_REF_NAME does not match package.json $version"; exit 1; }
+          if grep -nE '"file:|"link": true' package.json package-lock.json; then echo "::error::local file link found"; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT";; *) echo "prerelease=false" >> "$GITHUB_OUTPUT";; esac
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
           cache: npm
-          registry-url: https://npm.pkg.github.com
-          scope: '@msameim181'
-      - name: Refuse local file dependencies
-        run: "! grep -n '\"file:' package.json"
-      - name: Verify tag matches package version
-        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
-      - run: npm install --no-audit --no-fund
-        env:
-          # Reading @msameim181/iran-map-core from GitHub Packages needs a token with read access to it.
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm ci --ignore-scripts
       - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run lint:package
+      - run: npm run test:dist
+      - name: Pack
+        run: npm pack --pack-destination "$RUNNER_TEMP" --silent && mv "$RUNNER_TEMP"/*.tgz package.tgz
+      - name: Verify the packed tarball
+        run: TARBALL=package.tgz node scripts/verify-package.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package
+          path: package.tgz
+          retention-days: 7
+
+  publish-github:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@msameim181'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
       - name: Publish to GitHub Packages
-        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if npm view "@msameim181/iran-map-react@$VERSION" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "@msameim181/iran-map-react@$VERSION is already on GitHub Packages; skipping"
+            exit 0
+          fi
+          tag=latest; [ "$PRERELEASE" = "true" ] && tag=next
+          npm publish package.tgz --registry https://npm.pkg.github.com --access public --tag "$tag"
 
-  # Optional npmjs.com publish. Enable by adding an NPM_TOKEN repository secret, then uncomment.
-  # publish-npm:
-  #   needs: publish
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #     - uses: actions/setup-node@v6
-  #       with:
-  #         node-version: '22'
-  #         registry-url: https://registry.npmjs.org
-  #     - run: npm ci && npm run build
-  #     - run: npm publish --access public --registry https://registry.npmjs.org
-  #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # Trusted publishing: configure this workflow as the trusted publisher on npmjs.com, then set the repository
+  # variable NPM_PUBLISH=true. No token is stored anywhere. The package.json repository.url must match this repo.
+  publish-npm:
+    needs: verify
+    if: ${{ vars.NPM_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Trusted publishing needs npm >= 11.5.1
+        run: npm install -g npm@^11.5.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
+      - name: Publish to npmjs.com
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if npm view "@msameim181/iran-map-react@$VERSION" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "@msameim181/iran-map-react@$VERSION is already on npmjs.com; skipping"
+            exit 0
+          fi
+          tag=latest; [ "$PRERELEASE" = "true" ] && tag=next
+          npm publish package.tgz --registry https://registry.npmjs.org --access public --provenance --tag "$tag"
+
+  github-release:
+    needs: [verify, publish-github]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Create the GitHub Release from the CHANGELOG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; skipping"
+            exit 0
+          fi
+          # Notes: the "## <version>" section of CHANGELOG.md.
+          awk -v v="$VERSION" '$0 ~ "^## " v "( |$)" {found=1; next} found && /^## / {exit} found' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "::error::no CHANGELOG section for $VERSION"; exit 1; }
+          flags=""; [ "$PRERELEASE" = "true" ] && flags="--prerelease"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag $flags

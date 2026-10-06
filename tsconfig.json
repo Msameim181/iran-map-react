@@ -1,5 +1,5 @@
 {
-  "include": ["src", "tests", "example/src", "vitest.setup.ts"],
+  "include": ["src", "tests", "tests-dist", "example/src", "vitest.setup.ts"],
   "exclude": ["dist", "node_modules"],
   "compilerOptions": {
     "target": "ES2019",

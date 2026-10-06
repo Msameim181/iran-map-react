@@ -7,39 +7,98 @@ on:
 
 permissions:
   contents: read
-  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
           cache: npm
-          # Writes the @msameim181 scope + auth line to .npmrc; NODE_AUTH_TOKEN fills in the token.
-          registry-url: https://npm.pkg.github.com
-          scope: '@msameim181'
-      - name: Refuse local file dependencies
-        run: "! grep -n '\"file:' package.json"
-      # `npm install`, not `npm ci`: the lockfile has no entry for @msameim181/iran-map-core yet because it
-      # cannot be resolved without a read:packages token. Switch to `npm ci` once a maintainer commits one.
-      - name: Install
-        run: npm install --no-audit --no-fund
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Refuse local file links
+        run: "! grep -nE '\"file:|\"link\": true|\"resolved\": \"\\.\\./' package.json package-lock.json"
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run lint:package
+      - run: npm run test:dist
+      - name: Pack
+        run: npm pack --pack-destination "$RUNNER_TEMP" --silent && mv "$RUNNER_TEMP"/*.tgz package.tgz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package
+          path: |
+            package.tgz
+            dist
+          retention-days: 7
+
+  # The packed tarball, as a consumer installs it, on every supported Node and React version.
+  consumer-node:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
+          path: artifact
+      - name: Verify the packed tarball (ESM, CJS, SSR, NodeNext types, bundle size)
+        run: TARBALL=artifact/package.tgz node scripts/verify-package.mjs
+
+  consumer-react:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        react: ['16.14', '17', '18', '19']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
+          path: artifact
+      - run: npm ci --ignore-scripts
+      - name: Use the built dist and React ${{ matrix.react }}
+        run: |
+          rm -rf dist && mv artifact/dist dist
+          npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund react@${{ matrix.react }} react-dom@${{ matrix.react }}
+      - name: Run the dist tests (real react-tooltip, no mocks)
+        run: npm run test:dist
 
   workflows:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      # Pinned to a release tag; also checks release.yml, which only runs on v* tags.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      # Pinned to a release tag; also lints release.yml, which only runs on v* tags.
       - name: Lint workflows
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
