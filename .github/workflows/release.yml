@@ -1,8 +1,7 @@
 name: Release
 
 # Publishes to GitHub Packages when a version tag (v*) is pushed.
-# Prerequisite: the `file:../iran-map-core` dependency in package.json must be replaced
-# by a published @msameim181/iran-map-core version before tagging.
+# The tag must equal the package.json version. Local `file:` dependencies are refused.
 on:
   push:
     tags: ['v*']
@@ -22,9 +21,11 @@ jobs:
           cache: npm
           registry-url: https://npm.pkg.github.com
           scope: '@msameim181'
+      - name: Refuse local file: dependencies
+        run: "! grep -n '\"file:' package.json"
       - name: Verify tag matches package version
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
         env:
           # Reading @msameim181/iran-map-core from GitHub Packages needs a token with read access to it.
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

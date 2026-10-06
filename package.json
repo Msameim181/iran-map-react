@@ -80,7 +80,7 @@
     "react": ">=16.8.0"
   },
   "dependencies": {
-    "@msameim181/iran-map-core": "file:../iran-map-core",
+    "@msameim181/iran-map-core": "^0.1.0",
     "react-tooltip": "^5.25.0"
   },
   "devDependencies": {

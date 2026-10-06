@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: github-pages
@@ -16,44 +17,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out iran-map-react
-        uses: actions/checkout@v6
-        with:
-          path: iran-map-react
-      # Until iran-map-core is published, build it from source next to this repo (see ci.yml).
-      - name: Check out iran-map-core
-        uses: actions/checkout@v6
-        with:
-          repository: Msameim181/iran-map-core
-          path: iran-map-core
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: |
-            iran-map-react/package-lock.json
-            iran-map-core/package-lock.json
-      - name: Build core
-        working-directory: iran-map-core
-        run: npm ci && npm run build
+          registry-url: https://npm.pkg.github.com
+          scope: '@msameim181'
       - name: Install
-        working-directory: iran-map-react
-        run: npm ci
+        run: npm install --no-audit --no-fund
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run tests
-        working-directory: iran-map-react
         run: npm test
       - name: Lint
-        working-directory: iran-map-react
         run: npm run lint
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Build demo
-        working-directory: iran-map-react
         run: npm run demo:build -- --base /iran-map-react/
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: iran-map-react/demo-dist
+          path: demo-dist
 
   deploy:
     needs: build
