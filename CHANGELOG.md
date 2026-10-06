@@ -16,6 +16,7 @@ First release of `@msameim181/iran-map-react`, split out of the single-package `
 - Published to GitHub Packages as `@msameim181/iran-map-react`.
 - Tooling: Vite library build, Vitest + Testing Library (replaces Jest), Node 22.
 - Test libraries are no longer runtime dependencies.
+- Interaction handlers are stable and the SVG view is memoized, so hovering does not re-render every path when props are referentially stable.
 
 ### Fixed
 
