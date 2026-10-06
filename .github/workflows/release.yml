@@ -21,7 +21,7 @@ jobs:
           cache: npm
           registry-url: https://npm.pkg.github.com
           scope: '@msameim181'
-      - name: Refuse local file: dependencies
+      - name: Refuse local file dependencies
         run: "! grep -n '\"file:' package.json"
       - name: Verify tag matches package version
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"

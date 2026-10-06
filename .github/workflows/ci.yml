@@ -21,7 +21,7 @@ jobs:
           # Writes the @msameim181 scope + auth line to .npmrc; NODE_AUTH_TOKEN fills in the token.
           registry-url: https://npm.pkg.github.com
           scope: '@msameim181'
-      - name: Refuse local file: dependencies
+      - name: Refuse local file dependencies
         run: "! grep -n '\"file:' package.json"
       # `npm install`, not `npm ci`: the lockfile has no entry for @msameim181/iran-map-core yet because it
       # cannot be resolved without a read:packages token. Switch to `npm ci` once a maintainer commits one.
