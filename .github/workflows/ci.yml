@@ -34,3 +34,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Pinned to a release tag; also checks release.yml, which only runs on v* tags.
+      - name: Lint workflows
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color

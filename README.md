@@ -352,6 +352,10 @@ Set any of the `show*` options to `false` for a boundaries-only view. Tiny islan
 
 The legacy props `defaultSelectedProvince`, `selectedProvinceColor`, and `selectProvinceHandler` are still supported for province maps.
 
+## Known issues
+
+- The `ScoreBands` editor commits every valid intermediate value while you type (as in the legacy component). For example, typing `-5` into a bound first commits an empty, unbounded bound, then rejects `-5`. Planned for 0.2.
+
 ## Data attribution
 
 Administrative boundaries, physical coastlines, water bodies and coordinate corrections are derived from [OpenStreetMap](https://www.openstreetmap.org/copyright) data, available under the Open Data Commons Open Database License (ODbL) 1.0. Province and county boundaries use the [Iran GeoJSON](https://github.com/hosseinhabibi2004/iran-geojson) administrative catalog. Capital coordinates are primarily derived from [GeoNames](https://www.geonames.org/), available under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [`NOTICE`](NOTICE) (also shipped in the core package).

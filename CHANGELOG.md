@@ -25,3 +25,7 @@ First release of `@msameim181/iran-map-react`, split out of the single-package `
 ### Behavior note
 
 The default (root) entry no longer bundles county, island, sea or county-capital data. Import from `@msameim181/iran-map-react/full` for the legacy behavior.
+
+### Known issues
+
+- `ScoreBands` (editor mode) commits every valid intermediate value while you type, e.g. typing `-5` first commits an empty (unbounded) bound before `-5` is rejected. This matches the legacy component; a hold-back-until-valid behavior is planned for 0.2.
