@@ -14,7 +14,10 @@
     "moduleResolution": "bundler",
     "jsx": "react",
     "baseUrl": ".",
-    "paths": { "@msameim181/iran-map-react": ["src/index.ts"] },
+    "paths": {
+      "@msameim181/iran-map-react": ["src/index.ts"],
+      "@msameim181/iran-map-react/full": ["src/full.ts"]
+    },
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

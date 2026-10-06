@@ -8,12 +8,13 @@ export default defineConfig({
   build: {
     target: 'es2019',
     sourcemap: true,
+    minify: false,
     emptyOutDir: true,
     cssCodeSplit: false,
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      entry: { index: resolve(__dirname, 'src/index.ts'), full: resolve(__dirname, 'src/full.ts') },
       formats: ['es', 'cjs'],
-      fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
+      fileName: (format, name) => `${name}.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react-tooltip', /^@msameim181\/iran-map-core(\/.*)?$/],

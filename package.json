@@ -17,6 +17,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./full": {
+      "import": {
+        "types": "./dist/full.d.ts",
+        "default": "./dist/full.js"
+      },
+      "require": {
+        "types": "./dist/full.d.cts",
+        "default": "./dist/full.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": [
@@ -43,8 +53,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "vite build && npm run build:types",
-    "build:types": "tsc -p tsconfig.build.json && node scripts/copy-cts.mjs",
+    "build": "npm run clean && vite build && npm run build:types",
+    "build:types": "tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/finish-types.mjs",
     "typecheck": "tsc --noEmit",
     "demo": "vite --config example/vite.config.ts",
     "demo:build": "vite build --config example/vite.config.ts",
@@ -53,7 +63,8 @@
     "format:check": "prettier --check \"{src,tests,example/src}/**/*.{js,ts,jsx,tsx}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "keywords": [
     "map",
@@ -69,6 +80,7 @@
     "react": ">=16.8.0"
   },
   "dependencies": {
+    "@msameim181/iran-map-core": "file:../iran-map-core",
     "react-tooltip": "^5.25.0"
   },
   "devDependencies": {
@@ -89,8 +101,17 @@
     "prettier": "^3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "rollup": "^4.30.0",
+    "rollup-plugin-dts": "^6.1.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vitest": "^3.2.4"
+  },
+  "typesVersions": {
+    "*": {
+      "full": [
+        "./dist/full.d.ts"
+      ]
+    }
   }
 }

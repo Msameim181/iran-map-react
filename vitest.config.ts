@@ -2,7 +2,12 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  resolve: { alias: { '@msameim181/iran-map-react': resolve(__dirname, 'src/index.ts') } },
+  resolve: {
+    alias: [
+      { find: '@msameim181/iran-map-react/full', replacement: resolve(__dirname, 'src/full.ts') },
+      { find: /^@msameim181\/iran-map-react$/, replacement: resolve(__dirname, 'src/index.ts') },
+    ],
+  },
   esbuild: { jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment' },
   test: {
     environment: 'jsdom',
