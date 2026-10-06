@@ -1,0 +1,23 @@
+{
+  "include": ["src", "tests", "example/src", "vitest.setup.ts"],
+  "exclude": ["dist", "node_modules"],
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "noEmit": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "baseUrl": ".",
+    "paths": { "@msameim181/iran-map-react": ["src/index.ts"] },
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  }
+}
