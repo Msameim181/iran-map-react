@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Tooltip } from 'react-tooltip'
 import {
   MAP_CLASS_NAMES,
@@ -71,7 +71,8 @@ const IranMapView: React.FC<IranMapViewProps> = ({
   onCapitalClick,
 }) => {
   const { areas, islands, capitals, waterBodies, landBackgrounds, viewBox, showLabels, mapScale } = model
-  const metrics = getLabelMetrics(mapScale)
+  // Memoized: a new object per render would defeat the memoized islands and capital markers that receive it.
+  const metrics = useMemo(() => getLabelMetrics(mapScale), [mapScale])
 
   // react-tooltip's `float` mode follows the pointer, which a keyboard focus does not provide.
   // For keyboard focus the tooltip is pinned just below the focused element instead.

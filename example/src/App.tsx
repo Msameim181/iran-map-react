@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   IranMap,
   ScoreBands,
   countyBoundaries,
+  fullCatalogs,
   normalizeMapValue,
   provinceBoundaries,
 } from '@msameim181/iran-map-react/full'
@@ -10,6 +11,7 @@ import type {
   IranMapArea,
   IranMapCapital,
   IranMapCapitalLayer,
+  IranMapCatalogs,
   IranMapIsland,
   IranMapMode,
   IranMapRegion,
@@ -50,6 +52,31 @@ const regions: IranMapRegion[] = [
 const detailCounties = ['razaviKhorasan.mashhad', 'tehran.tehran', 'fars.shiraz']
 const focusCounties = ['razaviKhorasan.mashhad', 'razaviKhorasan.neyshabur', 'razaviKhorasan.torbatEHeydarieh']
 
+type DataLevel = 'full' | 'standard' | 'lite' | 'mini'
+
+// Gzipped size of every catalog at each level (see the core package's "Choosing a level").
+const dataLevels: Array<{ id: DataLevel; label: string; size: string; load: () => Promise<IranMapCatalogs> }> = [
+  { id: 'full', label: 'Full', size: '~1.9 MB', load: async () => fullCatalogs },
+  {
+    id: 'standard',
+    label: 'Standard',
+    size: '443 KB',
+    load: async () => (await import('@msameim181/iran-map-core/standard')).standardCatalogs,
+  },
+  {
+    id: 'lite',
+    label: 'Lite',
+    size: '198 KB',
+    load: async () => (await import('@msameim181/iran-map-core/lite')).liteCatalogs,
+  },
+  {
+    id: 'mini',
+    label: 'Mini',
+    size: '135 KB',
+    load: async () => (await import('@msameim181/iran-map-core/mini')).miniCatalogs,
+  },
+]
+
 const capitalLayers: Array<{ id: IranMapCapitalLayer; label: string }> = [
   { id: 'auto', label: 'Context' },
   { id: 'both', label: 'Both' },
@@ -87,6 +114,22 @@ const App: React.FC = () => {
   const [selectedCapital, setSelectedCapital] = useState<IranMapCapital | null>(null)
   const [capitalLayer, setCapitalLayer] = useState<IranMapCapitalLayer>('auto')
   const [showGeography, setShowGeography] = useState(true)
+  const [dataLevel, setDataLevel] = useState<DataLevel>('full')
+  const [loadedCatalogs, setLoadedCatalogs] = useState<{ level: DataLevel; catalogs: IranMapCatalogs }>({
+    level: 'full',
+    catalogs: fullCatalogs,
+  })
+  // Lazy: a level's data is only downloaded when it is first chosen. The map keeps the previous level until then.
+  useEffect(() => {
+    let current = true
+    dataLevels
+      .find((level) => level.id === dataLevel)
+      ?.load()
+      .then((catalogs) => current && setLoadedCatalogs({ level: dataLevel, catalogs }))
+    return () => {
+      current = false
+    }
+  }, [dataLevel])
   const [selectedIsland, setSelectedIsland] = useState<IranMapIsland | null>(null)
   const [focusProvinceId, setFocusProvinceId] = useState('razaviKhorasan')
   const [enabledCounties, setEnabledCounties] = useState<Record<string, boolean>>(
@@ -284,6 +327,29 @@ const App: React.FC = () => {
           </div>
 
           <div className='legend-block'>
+            <div className='panel-heading'>
+              <p className='panel-kicker'>Data level</p>
+              <span>{dataLevels.find((level) => level.id === loadedCatalogs.level)?.size} gzip</span>
+            </div>
+            <div className='capital-options geography-options' role='radiogroup' aria-label='Map data level'>
+              {dataLevels.map((level) => (
+                <button
+                  key={level.id}
+                  type='button'
+                  role='radio'
+                  aria-label={`${level.label} data level`}
+                  aria-checked={dataLevel === level.id}
+                  className={dataLevel === level.id ? 'is-active' : ''}
+                  onClick={() => setDataLevel(level.id)}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+            <small>Lighter levels trade coastline and boundary detail for download size; loaded on demand.</small>
+          </div>
+
+          <div className='legend-block'>
             <label className='metric-picker'>
               <span className='panel-kicker'>Metric name</span>
               <input
@@ -421,6 +487,7 @@ const App: React.FC = () => {
                     : NO_COUNTIES
               }
               data={data}
+              catalogs={loadedCatalogs.catalogs}
               colorBands={colorBands}
               width='100%'
               deactiveProvinceColor='#e6e6e6'
