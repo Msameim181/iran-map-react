@@ -348,6 +348,8 @@ Set any of the `show*` options to `false` for a boundaries-only view. Tiny islan
 | `showIslandLabels`      | `boolean`                                              | `true`          | Label the featured islands                           |
 | `onIslandSelect`        | `(island, area) => void`                               | —               | Receives the island and active administrative owner  |
 
+**Performance tip:** the map model is memoized on the props that affect it. Keep array and object props (`data`, `regions`, `detailedCounties`, `colorBands`, `catalogs`) referentially stable (hoist constants, `useMemo` derived values). A fresh `[]` or `{}` on every render rebuilds the model on every hover.
+
 The legacy props `defaultSelectedProvince`, `selectedProvinceColor`, and `selectProvinceHandler` are still supported for province maps.
 
 ## Data attribution

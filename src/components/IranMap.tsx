@@ -120,14 +120,27 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
       model.warnings.forEach(warnOnce)
     }, [model.warnings])
 
+    // Consumer callbacks are usually inline and change every render. Reading them through a ref keeps the
+    // handlers below stable, so the memoized view is skipped when only a parent re-renders (e.g. on hover).
+    const callbacks = useRef({
+      onSelect,
+      onDeselect,
+      onHover,
+      selectProvinceHandler,
+      onCapitalSelect,
+      onIslandSelect,
+    })
+    callbacks.current = { onSelect, onDeselect, onHover, selectProvinceHandler, onCapitalSelect, onIslandSelect }
+
     const clearSelection = useCallback(() => {
       if (selectedAreaId === undefined) return
+      const { onDeselect, onHover, selectProvinceHandler } = callbacks.current
       setSelectedAreaId(undefined)
       onDeselect?.()
       onHover?.(null)
       const province = getDeselectProvince(catalogs.provinces, selectedAreaId)
       if (province) selectProvinceHandler?.(province)
-    }, [catalogs.provinces, onDeselect, onHover, selectedAreaId, selectProvinceHandler])
+    }, [catalogs.provinces, selectedAreaId])
 
     useEffect(() => {
       const wrapper = wrapperRef.current
@@ -143,21 +156,36 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
       return () => ownerDocument.removeEventListener('click', handleClick, true)
     }, [clearSelection, selectedAreaId])
 
-    const handleSelect = (area: RenderableMapArea, toggle = true) => {
-      const result = resolveAreaSelection(selectedAreaId, area, toggle)
-      if (result.action === 'deselect') {
-        clearSelection()
-        return
-      }
-      setSelectedAreaId(result.selectedId)
-      onSelect?.(result.area)
-      if (result.province) selectProvinceHandler?.(result.province)
-    }
+    const handleSelect = useCallback(
+      (area: RenderableMapArea, toggle = true) => {
+        const result = resolveAreaSelection(selectedAreaId, area, toggle)
+        if (result.action === 'deselect') {
+          clearSelection()
+          return
+        }
+        setSelectedAreaId(result.selectedId)
+        callbacks.current.onSelect?.(result.area)
+        if (result.province) callbacks.current.selectProvinceHandler?.(result.province)
+      },
+      [clearSelection, selectedAreaId],
+    )
 
-    const handleIslandSelect = (island: RenderableMapIsland) => {
-      handleSelect(island.area, false)
-      onIslandSelect?.(toPublicIsland(island), toPublicArea(island.area))
-    }
+    const handleAreaClick = useCallback((area: RenderableMapArea) => handleSelect(area), [handleSelect])
+    const handleAreaHover = useCallback(
+      (area: RenderableMapArea | null) => callbacks.current.onHover?.(area && toPublicArea(area)),
+      [],
+    )
+    const handleIslandSelect = useCallback(
+      (island: RenderableMapIsland) => {
+        handleSelect(island.area, false)
+        callbacks.current.onIslandSelect?.(toPublicIsland(island), toPublicArea(island.area))
+      },
+      [handleSelect],
+    )
+    const handleCapitalSelect = useCallback(
+      (capital: IranMapCapital) => callbacks.current.onCapitalSelect?.(capital),
+      [],
+    )
 
     return (
       <div
@@ -184,10 +212,10 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
           seaLabelColor={seaLabelColor}
           showSeaLabels={showSeaLabels}
           showIslandLabels={showIslandLabels}
-          onAreaClick={handleSelect}
-          onAreaHover={(area) => onHover?.(area && toPublicArea(area))}
+          onAreaClick={handleAreaClick}
+          onAreaHover={handleAreaHover}
           onIslandClick={handleIslandSelect}
-          onCapitalClick={(capital: IranMapCapital) => onCapitalSelect?.(capital)}
+          onCapitalClick={handleCapitalSelect}
         />
       </div>
     )

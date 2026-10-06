@@ -286,4 +286,4 @@ const IranMapView: React.FC<IranMapViewProps> = ({
   )
 }
 
-export default IranMapView
+export default React.memo(IranMapView)

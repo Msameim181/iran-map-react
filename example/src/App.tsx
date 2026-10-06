@@ -28,6 +28,10 @@ const modes: Array<{ id: DemoMode; label: string; caption: string }> = [
   { id: 'region', label: 'Custom regions', caption: 'Province groups + county detail' },
 ]
 
+// Stable references: a fresh `[]` per render would rebuild the map model on every hover.
+const NO_REGIONS: IranMapRegion[] = []
+const NO_COUNTIES: string[] = []
+
 const regions: IranMapRegion[] = [
   {
     id: 'greater-khorasan',
@@ -109,7 +113,10 @@ const App: React.FC = () => {
     () => countyBoundaries.filter((county) => county.provinceId === focusProvinceId),
     [focusProvinceId],
   )
-  const selectedCountyIds = provinceCounties.filter((county) => enabledCounties[county.id]).map((county) => county.id)
+  const selectedCountyIds = useMemo(
+    () => provinceCounties.filter((county) => enabledCounties[county.id]).map((county) => county.id),
+    [enabledCounties, provinceCounties],
+  )
 
   const clearInspection = () => {
     setSelectedArea(null)
@@ -405,13 +412,13 @@ const App: React.FC = () => {
             <IranMap
               mode={activeMode}
               focusProvince={demoMode === 'focus' ? focusProvinceId : undefined}
-              regions={demoMode === 'region' ? regions : []}
+              regions={demoMode === 'region' ? regions : NO_REGIONS}
               detailedCounties={
                 demoMode === 'focus'
                   ? selectedCountyIds
                   : demoMode === 'mixed' || demoMode === 'region'
                     ? detailCounties
-                    : []
+                    : NO_COUNTIES
               }
               data={data}
               colorBands={colorBands}
