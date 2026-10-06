@@ -67,6 +67,7 @@ Props, callbacks, CSS class names, `data-testid` attributes and defaults are unc
 - Every map instance gets its own tooltip id, so several maps on one page do not share a tooltip. Pass `tooltipId` for a stable id when server rendering under React < 18 (React 18+ uses `useId`, which is hydration-safe).
 - The tooltip follows the pointer, is pinned below the element on keyboard focus, and closes on Escape. `tooltip={false}` removes the tooltip (and the `react-tooltip` instance) entirely; the `aria-label`s stay.
 - `react-tooltip` injects a `<style>` tag at runtime. Under a strict Content-Security-Policy pass `tooltipDisableStyleInjection` (`true`, or `'core'` to keep the base styles) and ship the `react-tooltip` CSS yourself.
+- The `ScoreBands` editor keeps typed text as a draft and commits on blur or Enter (a blank bound commits as unbounded), so half-typed values never change the map. New bands are open-ended.
 - Areas, islands and (when you pass `onCapitalSelect`) capital markers are focusable buttons: Enter activates on press, Space on release, holding a key does not repeat, and Escape clears the selection.
 - If the selected area leaves the map (mode, focus or data change), the selection is cleared and `onDeselect` fires once. A `defaultSelectedArea` that is not in the map is ignored silently.
 - The package adds `'use client'`, so it works in Next.js App Router client trees, and renders on the server without a DOM.
@@ -359,10 +360,6 @@ Set any of the `show*` options to `false` for a boundaries-only view. Tiny islan
 **Performance tip:** the map model is memoized on the props that affect it. Keep array and object props (`data`, `regions`, `detailedCounties`, `colorBands`, `catalogs`) referentially stable (hoist constants, `useMemo` derived values). A fresh `[]` or `{}` on every render rebuilds the model on every hover.
 
 The legacy props `defaultSelectedProvince`, `selectedProvinceColor`, and `selectProvinceHandler` are still supported for province maps.
-
-## Known issues
-
-- The `ScoreBands` editor commits every valid intermediate value while you type (as in the legacy component). For example, typing `-5` into a bound first commits an empty, unbounded bound, then rejects `-5`. Planned for 0.2.
 
 ## Data attribution
 

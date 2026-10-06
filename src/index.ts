@@ -1,12 +1,8 @@
-import { provinceBoundaries } from '@msameim181/iran-map-core/provinces'
-import { provinceCapitalMarkers } from '@msameim181/iran-map-core/capitals/provinces'
+import { provinceBoundaries, provinceCapitalMarkers, provinceCatalogs } from '@msameim181/iran-map-core/lean'
 import { createIranMap } from './components/IranMap'
 
-/** Lean map: province polygons and province capitals only. For counties, islands and seas use `/full` or `catalogs`. */
-export const IranMap = /*#__PURE__*/ createIranMap({
-  provinces: provinceBoundaries,
-  provinceCapitals: provinceCapitalMarkers,
-})
+/** Lean map: province polygons and province capitals only. For counties, islands and seas use `/lite`, `/full` or `catalogs`. */
+export const IranMap = /*#__PURE__*/ createIranMap(provinceCatalogs)
 
 export { createIranMap }
 export type { IranMapProps } from './components/IranMap'

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SELECTABLE_ELEMENT_SELECTOR,
   buildMapModel,
+  getTooltipId,
   getDeselectProvince,
   iranMapDefaults,
   resolveAreaSelection,
@@ -106,7 +107,7 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
     const [selectedAreaId, setSelectedAreaId] = useState(resolveDefaultSelectedArea(props))
     const wrapperRef = useRef<HTMLDivElement>(null)
     const instanceId = useInstanceId()
-    const tooltipId = tooltip ? (tooltipIdProp ?? `iran-map-tooltip-${sanitizeId(instanceId)}`) : undefined
+    const tooltipId = tooltip ? (tooltipIdProp ?? getTooltipId(sanitizeId(instanceId))) : undefined
 
     const model = useMemo(
       () =>

@@ -19,8 +19,15 @@
 - Demo: "Data level" selector (Full / Standard / Lite / Mini) that loads core's presets on demand.
 - CI: Node 18/20/22 and React 16.14/17/18/19 consumer matrix on the packed tarball, publint, are-the-types-wrong, SSR with the real package, axe, StrictMode and SSR tests.
 
+### Fixed
+
+- `ScoreBands` no longer commits every intermediate keystroke (typing `-5` used to briefly make a bound unbounded). Typed text is a draft committed on blur or Enter; removing a band keeps the other bands' drafts. Closes #1.
+- Focus ring on areas (from core 0.2.0's stylesheet) so keyboard focus is visible.
+
 ### Changed
 
+- The root entry binds core's `./lean` preset; the tooltip id comes from core's `getTooltipId`.
+- "Add band" appends an open-ended band starting at the display minimum.
 - Selection changes only re-render the previous and the new selection (memoized area, island and capital-marker components).
 - Callback props are read through a ref written in a layout effect (concurrent-render safe).
 - Installation is from npmjs.com (trusted publishing with provenance); GitHub Packages receives the same tarball.
@@ -50,7 +57,3 @@ First release of `@msameim181/iran-map-react`, split out of the single-package `
 ### Behavior note
 
 The default (root) entry no longer bundles county, island, sea or county-capital data. Import from `@msameim181/iran-map-react/full` for the legacy behavior.
-
-### Known issues
-
-- `ScoreBands` (editor mode) commits every valid intermediate value while you type, e.g. typing `-5` first commits an empty (unbounded) bound before `-5` is rejected. This matches the legacy component; a hold-back-until-valid behavior is planned for 0.2.

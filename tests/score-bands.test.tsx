@@ -40,6 +40,7 @@ describe('Standalone ScoreBands', () => {
     const minimum = getByRole('spinbutton', { name: 'Minimum (inclusive)' }) as HTMLInputElement
     expect(minimum.min).toBe('')
     fireEvent.change(minimum, { target: { value: '-350.75' } })
+    fireEvent.blur(minimum)
     expect(onChange).toHaveBeenLastCalledWith([{ min: -350.75, max: 1200.25, color: '#123456' }])
   })
 
@@ -48,11 +49,14 @@ describe('Standalone ScoreBands', () => {
     const { getByRole } = render(<ScoreBands bands={[{ min: 0, max: 50, color: '#123456' }]} onChange={onChange} />)
     const minimum = getByRole('spinbutton', { name: 'Minimum (inclusive)' })
     fireEvent.change(minimum, { target: { value: '60' } })
+    fireEvent.blur(minimum)
     expect(onChange).not.toHaveBeenCalled()
     expect(getByRole('alert')).toBeTruthy()
     fireEvent.change(minimum, { target: { value: '-10' } })
+    fireEvent.blur(minimum)
     expect(onChange).not.toHaveBeenCalled()
     fireEvent.change(minimum, { target: { value: '20' } })
+    fireEvent.blur(minimum)
     expect(onChange).toHaveBeenLastCalledWith([{ min: 20, max: 50, color: '#123456' }])
   })
 
@@ -63,7 +67,9 @@ describe('Standalone ScoreBands', () => {
     }
     const { getByRole, getAllByRole, getByText } = render(<Harness />)
     const firstBand = () => within(getByRole('group', { name: 'Band 1' }))
-    fireEvent.change(firstBand().getByRole('spinbutton', { name: 'Maximum (exclusive)' }), { target: { value: '' } })
+    const maximum = firstBand().getByRole('spinbutton', { name: 'Maximum (exclusive)' })
+    fireEvent.change(maximum, { target: { value: '' } })
+    fireEvent.blur(maximum)
     expect(getByText('All values')).toBeTruthy()
     fireEvent.change(firstBand().getByRole('textbox', { name: 'Label' }), { target: { value: 'Custom category' } })
     expect(getByText('Custom category')).toBeTruthy()
@@ -108,5 +114,66 @@ describe('Standalone ScoreBands', () => {
     expect(getByText('Unavailable')).toBeTruthy()
     expect(getByRole('alert')).toBeTruthy()
     expect(getByText('No bands configured.')).toBeTruthy()
+  })
+
+  describe('typing', () => {
+    const bands: IranMapColorBand[] = [
+      { max: 25, color: '#111111', label: 'Low' },
+      { min: 25, max: 50, color: '#222222', label: 'Mid' },
+    ]
+
+    it('keeps typed text as a draft and commits only on blur', () => {
+      const onChange = vi.fn()
+      const { getAllByRole } = render(<ScoreBands bands={bands} onChange={onChange} />)
+      const maximum = getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[0] as HTMLInputElement
+      fireEvent.change(maximum, { target: { value: '3' } })
+      fireEvent.change(maximum, { target: { value: '30' } })
+      expect(maximum.value).toBe('30')
+      expect(onChange).not.toHaveBeenCalled()
+      fireEvent.blur(maximum)
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledWith([{ max: 30, color: '#111111', label: 'Low' }, bands[1]])
+    })
+
+    it('commits on Enter and treats a blank bound as unbounded only when committed', () => {
+      const onChange = vi.fn()
+      const { getAllByRole } = render(<ScoreBands bands={bands} onChange={onChange} />)
+      const maximum = getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[0]
+      fireEvent.change(maximum, { target: { value: '' } })
+      expect(onChange).not.toHaveBeenCalled()
+      fireEvent.keyDown(maximum, { key: 'Enter' })
+      expect(onChange).toHaveBeenCalledWith([{ color: '#111111', label: 'Low' }, bands[1]])
+    })
+
+    it('marks an invalid draft and keeps the previous bands', () => {
+      const onChange = vi.fn()
+      const { getAllByRole, getByRole } = render(<ScoreBands bands={bands} onChange={onChange} />)
+      const maximum = getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[0]
+      fireEvent.change(maximum, { target: { value: '150' } })
+      expect(maximum.getAttribute('aria-invalid')).toBe('true')
+      expect(getByRole('alert')).toBeTruthy()
+      fireEvent.blur(maximum)
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it("keeps another band's draft when a band is removed", () => {
+      const Harness = () => {
+        const [current, setCurrent] = useState(bands)
+        return <ScoreBands bands={current} onChange={setCurrent} />
+      }
+      const { getAllByRole, getByRole } = render(<Harness />)
+      fireEvent.change(getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[1], { target: { value: '60' } })
+      fireEvent.click(getByRole('button', { name: 'Remove band 1' }))
+      expect((getAllByRole('spinbutton', { name: 'Maximum (exclusive)' })[0] as HTMLInputElement).value).toBe('60')
+    })
+
+    it('adds an open-ended band from the domain minimum', () => {
+      const onChange = vi.fn()
+      const { getByRole } = render(<ScoreBands bands={bands} onChange={onChange} min={10} max={90} scale='numeric' />)
+      fireEvent.click(getByRole('button', { name: 'Add band' }))
+      const added = onChange.mock.calls[0][0][2]
+      expect(added.min).toBe(10)
+      expect(added.max).toBeUndefined()
+    })
   })
 })

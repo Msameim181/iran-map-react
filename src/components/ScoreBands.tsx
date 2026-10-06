@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   addBand,
   applyDrafts,
-  editBound,
+  commitDraft,
   getBoundInputLimits,
   getColorInputValue,
   getDomainLabel,
@@ -14,8 +14,9 @@ import {
   hasInvalidBands,
   isValidBand,
   isValidDomain,
-  removeBand,
+  removeBandWithDrafts,
   scoreBandsDefaults,
+  setDraft,
   scoreBandsText,
   updateBand,
 } from '@msameim181/iran-map-core'
@@ -56,16 +57,26 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
   className = '',
   style,
 }) => {
+  // Typed text lives in drafts and only reaches `onChange` on blur or Enter, so half-typed values never change the map.
   const [drafts, setDrafts] = useState<ScoreBandDrafts>({})
-  useEffect(() => setDrafts({}), [bands])
+  // Bands this component just emitted: when they come back as the prop, the drafts of other bands are still valid.
+  const emitted = useRef<IranMapColorBand[]>()
+  useEffect(() => {
+    if (bands === emitted.current) emitted.current = undefined
+    else setDrafts({})
+  }, [bands])
+  const emit = (next: IranMapColorBand[]) => {
+    emitted.current = next
+    onChange?.(next)
+  }
   const validDomain = isValidDomain(min, max, scale)
   const invalid = hasInvalidBands(bands, drafts, scale)
   const limits = getBoundInputLimits(scale)
 
-  const updateBound = (index: number, field: ScoreBandField, text: string) => {
-    const edit = editBound(bands, drafts, index, field, text, scale)
+  const commit = (index: number) => {
+    const edit = commitDraft(bands, drafts, index, scale)
     setDrafts(edit.drafts)
-    if (edit.bands) onChange?.(edit.bands)
+    if (edit.bands) emit(edit.bands)
   }
 
   return (
@@ -99,7 +110,7 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                 <input
                   type='text'
                   value={band.label || ''}
-                  onChange={(event) => onChange(updateBand(bands, index, { label: event.target.value }))}
+                  onChange={(event) => emit(updateBand(bands, index, { label: event.target.value }))}
                 />
               </label>
               {FIELDS.map((field) => (
@@ -113,7 +124,9 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                     placeholder='Unbounded'
                     value={drafts[getDraftKey(index, field)] ?? band[field] ?? ''}
                     aria-invalid={!isValidBand(applyDrafts(band, drafts, index), scale)}
-                    onChange={(event) => updateBound(index, field, event.target.value)}
+                    onChange={(event) => setDrafts((current) => setDraft(current, index, field, event.target.value))}
+                    onBlur={() => commit(index)}
+                    onKeyDown={(event) => event.key === 'Enter' && commit(index)}
                   />
                 </label>
               ))}
@@ -122,20 +135,24 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                 <input
                   type='color'
                   value={getColorInputValue(band.color)}
-                  onChange={(event) => onChange(updateBand(bands, index, { color: event.target.value }))}
+                  onChange={(event) => emit(updateBand(bands, index, { color: event.target.value }))}
                 />
               </label>
               <button
                 type='button'
                 aria-label={`Remove band ${index + 1}`}
-                onClick={() => onChange(removeBand(bands, index))}
+                onClick={() => {
+                  const removed = removeBandWithDrafts(bands, drafts, index)
+                  setDrafts(removed.drafts)
+                  emit(removed.bands)
+                }}
               >
                 {scoreBandsText.removeBand}
               </button>
             </fieldset>
           ))}
           {invalid && <p role='alert'>{scoreBandsText.invalidBands}</p>}
-          <button type='button' disabled={!validDomain} onClick={() => onChange(addBand(bands, min, max))}>
+          <button type='button' disabled={!validDomain} onClick={() => emit(addBand(bands, min))}>
             {scoreBandsText.addBand}
           </button>
           <p>{scoreBandsText.help}</p>
