@@ -1,11 +1,48 @@
 version: 2
 updates:
+  # Actions stay pinned to commit SHAs; Dependabot rewrites the SHA and the version comment together.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+    # Majors are not grouped, so each one arrives as its own pull request.
+
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      timezone: Asia/Tehran
     open-pull-requests-limit: 5
+    # A dependency joins the first group it matches, so the order below matters.
+    groups:
+      # Plugin and parser must move together, majors included.
+      typescript-eslint:
+        patterns: ['@typescript-eslint/*']
+      react:
+        patterns: [react, react-dom, '@types/react', '@types/react-dom']
+        update-types: [minor, patch]
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Blocked until the lint config moves to flat config.
+      - dependency-name: eslint
+        versions: ['>=9.0.0']
+      - dependency-name: typescript
+        versions: ['>=6.1.0']
+      # Needs Vite 8.
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: ['version-update:semver-major']
+      # The package supports React 16.14 to 19; the dev copy tracks 18.
+      - dependency-name: react
+        update-types: ['version-update:semver-major']
+      - dependency-name: react-dom
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react-dom'
+        update-types: ['version-update:semver-major']

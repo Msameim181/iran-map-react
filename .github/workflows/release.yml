@@ -7,9 +7,16 @@ name: Release
 #   publish-npm     npmjs.com via trusted publishing (OIDC, no token); skipped until the NPM_PUBLISH variable is 'true'
 #   github-release  GitHub Release with the CHANGELOG notes
 # Re-running is safe: a version that already exists on a registry or as a release is skipped.
+#
+# Dry run: start this workflow manually (workflow_dispatch) on any branch, for example
+#   gh workflow run release.yml --ref <branch>
+# verify runs as for a tag, minus the tag checks; dry-run-npm and dry-run-github then repeat the publish jobs' setup
+# (setup-node, npm, download-artifact) with read-only permissions and end in `npm publish --dry-run`. The real
+# publish jobs and the GitHub Release only run for a pushed tag, never for a dispatch.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions: {}
 
@@ -22,22 +29,26 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Tag must be on main and match package.json
+      - name: Tag must be on main and match package.json (dry runs skip the tag checks)
         id: meta
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
           version="$(node -p "require('./package.json').version")"
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::tag $GITHUB_REF_NAME does not match package.json $version"; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            git fetch --no-tags origin main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+            test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::tag $GITHUB_REF_NAME does not match package.json $version"; exit 1; }
+          else
+            echo "Dry run on $GITHUB_REF_NAME: tag checks skipped"
+          fi
           if grep -nE '"file:|"link": true' package.json package-lock.json; then echo "::error::local file link found"; exit 1; fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT";; *) echo "prerelease=false" >> "$GITHUB_OUTPUT";; esac
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: npm
@@ -61,17 +72,18 @@ jobs:
 
   publish-github:
     needs: verify
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           registry-url: https://npm.pkg.github.com
           scope: '@msameim181'
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: package
       - name: Publish to GitHub Packages
@@ -92,19 +104,19 @@ jobs:
   # variable NPM_PUBLISH=true. No token is stored anywhere. The package.json repository.url must match this repo.
   publish-npm:
     needs: verify
-    if: ${{ vars.NPM_PUBLISH == 'true' }}
+    if: ${{ github.event_name == 'push' && vars.NPM_PUBLISH == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           registry-url: https://registry.npmjs.org
       - name: Trusted publishing needs npm >= 11.5.1; pinned exactly because this job can mint an OIDC token
         run: npm install -g npm@11.21.0
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: package
       - name: Publish to npmjs.com
@@ -120,13 +132,82 @@ jobs:
           tag=latest; [ "$PRERELEASE" = "true" ] && tag=next
           npm publish package.tgz --registry https://registry.npmjs.org --access public --provenance --tag "$tag"
 
+  # Dry run (workflow_dispatch only). Same setup as publish-npm, but read-only: no id-token, no packages: write, and
+  # no NODE_AUTH_TOKEN, exactly as the real npm job runs. The final command cannot publish.
+  dry-run-npm:
+    needs: verify
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Same npm as the publish job
+        run: npm install -g npm@11.21.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package
+      - name: Dry-run publish to npmjs.com
+        run: |
+          set -euo pipefail
+          npm --version
+          npm config get registry
+          ls -l package.tgz
+          set +e
+          out="$(npm publish package.tgz --dry-run --access public --registry https://registry.npmjs.org --tag next 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            # The registry was reached and the config accepted; the real job skips an existing version before this point.
+            echo "$out" | grep -q 'previously published' || exit "$code"
+            echo "::notice::this version is already published; the real job would skip it"
+          fi
+
+  # Dry run (workflow_dispatch only). Same setup as publish-github with the same token, but only contents: read.
+  dry-run-github:
+    needs: verify
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@msameim181'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package
+      - name: Dry-run publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ls -l package.tgz
+          set +e
+          out="$(npm publish package.tgz --dry-run --access public --registry https://npm.pkg.github.com --tag next 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            # The registry was reached and the config accepted; the real job skips an existing version before this point.
+            echo "$out" | grep -q 'previously published' || exit "$code"
+            echo "::notice::this version is already published; the real job would skip it"
+          fi
+
   github-release:
     needs: [verify, publish-github]
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Create the GitHub Release from the CHANGELOG
