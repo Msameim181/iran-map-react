@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as React from 'react'
 import { fireEvent, render } from '@testing-library/react'
-import { IranMap, countyBoundaries, provinceBoundaries } from '@msameim181/iran-map-react'
+import { IranMap, countyBoundaries, provinceBoundaries } from '@msameim181/iran-map-react/full'
 
 const provinceData = {
   ardabil: 0,

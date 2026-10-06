@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import type { IranMapValue, MapBoundary } from '@msameim181/iran-map-react'
-import { normalizeMapValue } from '../../src/utils/mapValues'
+import type { IranMapValue, MapBoundary } from '@msameim181/iran-map-react/full'
+import { normalizeMapValue } from '@msameim181/iran-map-react/full'
 
 interface CountyEditorProps {
   counties: MapBoundary[]

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import React, { useState } from 'react'
 import { fireEvent, render, within } from '@testing-library/react'
-import { IranMap, ScoreBands } from '@msameim181/iran-map-react'
-import type { IranMapColorBand } from '@msameim181/iran-map-react'
+import { IranMap, ScoreBands } from '@msameim181/iran-map-react/full'
+import type { IranMapColorBand } from '@msameim181/iran-map-react/full'
 
 vi.mock('react-tooltip', () => ({ Tooltip: () => null }))
 

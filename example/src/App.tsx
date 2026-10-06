@@ -1,5 +1,11 @@
 import React, { useMemo, useState } from 'react'
-import { IranMap, ScoreBands, countyBoundaries, provinceBoundaries } from '@msameim181/iran-map-react'
+import {
+  IranMap,
+  ScoreBands,
+  countyBoundaries,
+  normalizeMapValue,
+  provinceBoundaries,
+} from '@msameim181/iran-map-react/full'
 import type {
   IranMapArea,
   IranMapCapital,
@@ -9,8 +15,7 @@ import type {
   IranMapRegion,
   IranMapValue,
   IranMapColorBand,
-} from '@msameim181/iran-map-react'
-import { normalizeMapValue } from '../../src/utils/mapValues'
+} from '@msameim181/iran-map-react/full'
 import CountyEditor from './CountyEditor'
 
 type DemoMode = IranMapMode | 'mixed' | 'focus'

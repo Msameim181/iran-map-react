@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import React from 'react'
 import { fireEvent, render } from '@testing-library/react'
 import App from '../example/src/App'
-import { countyBoundaries } from '@msameim181/iran-map-react'
+import { countyBoundaries } from '@msameim181/iran-map-react/full'
 
 // Test the demo controls and tooltip attributes without the overlay's asynchronous observers.
 vi.mock('react-tooltip', () => ({ Tooltip: () => null }))

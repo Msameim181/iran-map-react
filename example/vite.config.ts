@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     // Run the demo against the package sources, no build needed.
-    alias: { '@msameim181/iran-map-react': resolve(__dirname, '../src/index.ts') },
+    alias: [
+      { find: '@msameim181/iran-map-react/full', replacement: resolve(__dirname, '../src/full.ts') },
+      { find: /^@msameim181\/iran-map-react$/, replacement: resolve(__dirname, '../src/index.ts') },
+    ],
   },
   build: {
     outDir: '../demo-dist',
