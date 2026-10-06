@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   addBand,
   applyDrafts,
-  editBound,
+  commitDraft,
   getBoundInputLimits,
   getColorInputValue,
   getDomainLabel,
@@ -14,13 +14,13 @@ import {
   hasInvalidBands,
   isValidBand,
   isValidDomain,
-  removeBand,
+  removeBandWithDrafts,
   scoreBandsDefaults,
+  setDraft,
   scoreBandsText,
   updateBand,
 } from '@msameim181/iran-map-core'
 import type { IranMapColorBand, ScoreBandDrafts, ScoreBandField } from '@msameim181/iran-map-core'
-import '@msameim181/iran-map-core/styles.css'
 
 export interface ScoreBandsProps {
   bands: IranMapColorBand[]
@@ -40,6 +40,12 @@ export interface ScoreBandsProps {
   style?: CSSProperties
 }
 
+const without = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
+  const next = { ...record }
+  delete next[key]
+  return next
+}
+
 const FIELDS: ScoreBandField[] = ['min', 'max']
 
 const ScoreBands: React.FC<ScoreBandsProps> = ({
@@ -57,16 +63,33 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
   className = '',
   style,
 }) => {
+  // Typed text lives in drafts and only reaches `onChange` on blur or Enter, so half-typed values never change the map.
   const [drafts, setDrafts] = useState<ScoreBandDrafts>({})
-  useEffect(() => setDrafts({}), [bands])
+  // Inputs currently holding partial text such as "-" (see onChange); they are never committed.
+  const [partial, setPartial] = useState<Record<string, true>>({})
+  // Bands this component just emitted: when they come back as the prop, the drafts of other bands are still valid.
+  const emitted = useRef<IranMapColorBand[]>()
+  useEffect(() => {
+    if (bands === emitted.current) emitted.current = undefined
+    else {
+      setDrafts({})
+      setPartial({})
+    }
+  }, [bands])
+  const emit = (next: IranMapColorBand[]) => {
+    emitted.current = next
+    onChange?.(next)
+  }
   const validDomain = isValidDomain(min, max, scale)
   const invalid = hasInvalidBands(bands, drafts, scale)
   const limits = getBoundInputLimits(scale)
 
-  const updateBound = (index: number, field: ScoreBandField, text: string) => {
-    const edit = editBound(bands, drafts, index, field, text, scale)
+  const commit = (index: number) => {
+    // Partial text such as "-" is abandoned on commit: the input falls back to the band's current bound.
+    setPartial((current) => without(without(current, getDraftKey(index, 'min')), getDraftKey(index, 'max')))
+    const edit = commitDraft(bands, drafts, index, scale)
     setDrafts(edit.drafts)
-    if (edit.bands) onChange?.(edit.bands)
+    if (edit.bands) emit(edit.bands)
   }
 
   return (
@@ -100,7 +123,7 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                 <input
                   type='text'
                   value={band.label || ''}
-                  onChange={(event) => onChange(updateBand(bands, index, { label: event.target.value }))}
+                  onChange={(event) => emit(updateBand(bands, index, { label: event.target.value }))}
                 />
               </label>
               {FIELDS.map((field) => (
@@ -112,9 +135,29 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                     min={limits.min}
                     max={limits.max}
                     placeholder='Unbounded'
-                    value={drafts[getDraftKey(index, field)] ?? band[field] ?? ''}
-                    aria-invalid={!isValidBand(applyDrafts(band, drafts, index), scale)}
-                    onChange={(event) => updateBound(index, field, event.target.value)}
+                    value={
+                      partial[getDraftKey(index, field)] ? '' : (drafts[getDraftKey(index, field)] ?? band[field] ?? '')
+                    }
+                    aria-invalid={
+                      partial[getDraftKey(index, field)] || !isValidBand(applyDrafts(band, drafts, index), scale)
+                    }
+                    onChange={(event) => {
+                      const key = getDraftKey(index, field)
+                      // A number input holding partial text such as "-" or "3-0" reports an empty value with
+                      // `badInput` set. Recording that as a blank draft would later commit "unbounded", silently,
+                      // so it is tracked separately. The input keeps showing '' (not the old value) so React does
+                      // not overwrite what the user is typing.
+                      if (event.target.validity?.badInput) {
+                        setPartial((current) => ({ ...current, [key]: true }))
+                        setDrafts((current) => without(current, key))
+                        return
+                      }
+                      const { value } = event.target
+                      setPartial((current) => without(current, key))
+                      setDrafts((current) => setDraft(current, index, field, value))
+                    }}
+                    onBlur={() => commit(index)}
+                    onKeyDown={(event) => event.key === 'Enter' && commit(index)}
                   />
                 </label>
               ))}
@@ -123,20 +166,25 @@ const ScoreBands: React.FC<ScoreBandsProps> = ({
                 <input
                   type='color'
                   value={getColorInputValue(band.color)}
-                  onChange={(event) => onChange(updateBand(bands, index, { color: event.target.value }))}
+                  onChange={(event) => emit(updateBand(bands, index, { color: event.target.value }))}
                 />
               </label>
               <button
                 type='button'
                 aria-label={`Remove band ${index + 1}`}
-                onClick={() => onChange(removeBand(bands, index))}
+                onClick={() => {
+                  const removed = removeBandWithDrafts(bands, drafts, index)
+                  setDrafts(removed.drafts)
+                  setPartial({})
+                  emit(removed.bands)
+                }}
               >
                 {scoreBandsText.removeBand}
               </button>
             </fieldset>
           ))}
           {invalid && <p role='alert'>{scoreBandsText.invalidBands}</p>}
-          <button type='button' disabled={!validDomain} onClick={() => onChange(addBand(bands, min, max))}>
+          <button type='button' disabled={!validDomain} onClick={() => emit(addBand(bands, min))}>
             {scoreBandsText.addBand}
           </button>
           <p>{scoreBandsText.help}</p>

@@ -85,7 +85,10 @@ describe('Dismissible map selection', () => {
     expect(area.getAttribute('aria-pressed')).toBe('true')
     fireEvent.keyDown(area, { key: 'Enter' })
     expect(area.getAttribute('aria-pressed')).toBe('false')
+    // Space activates on key release, like a native button.
     fireEvent.keyDown(area, { key: ' ' })
+    expect(area.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.keyUp(area, { key: ' ' })
     expect(area.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(document.body)
     expect(area.getAttribute('aria-pressed')).toBe('false')

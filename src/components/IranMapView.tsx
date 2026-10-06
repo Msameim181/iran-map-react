@@ -1,23 +1,15 @@
-import React from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Tooltip } from 'react-tooltip'
 import {
   MAP_CLASS_NAMES,
-  MAP_TOOLTIP_ID,
   getAreaFill,
-  getAreaTestId,
-  getAreaTooltip,
-  getCapitalMarkerGeometry,
-  getCapitalTestId,
-  getCapitalTooltip,
   getIslandFill,
-  getIslandTestId,
-  getIslandTooltip,
   getLabelMetrics,
   getLabeledWaterBodies,
   getProvinceLabelAreas,
-  isActivationKey,
 } from '@msameim181/iran-map-core'
 import type { IranMapCapital, IranMapModel, RenderableMapArea, RenderableMapIsland } from '@msameim181/iran-map-core'
+import { AreaPath, CapitalMarker, IslandPath } from './parts'
 
 export interface IranMapViewProps {
   model: IranMapModel
@@ -38,17 +30,23 @@ export interface IranMapViewProps {
   seaLabelColor: string
   showSeaLabels: boolean
   showIslandLabels: boolean
+  /** Unique tooltip id, or undefined to render no tooltip. */
+  tooltipId?: string
+  tooltipDisableStyleInjection?: boolean | 'core'
   onAreaClick: (area: RenderableMapArea) => void
   onAreaHover: (area: RenderableMapArea | null) => void
   onIslandClick: (island: RenderableMapIsland) => void
-  onCapitalClick: (capital: IranMapCapital) => void
+  onCapitalClick?: (capital: IranMapCapital) => void
 }
 
-const activate = (callback: () => void) => (event: React.KeyboardEvent) => {
-  if (isActivationKey(event.key)) {
-    event.preventDefault()
-    callback()
-  }
+interface TooltipPosition {
+  x: number
+  y: number
+}
+
+const getPinnedPosition = (target: Element): TooltipPosition => {
+  const rect = target.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.bottom + 8 }
 }
 
 const IranMapView: React.FC<IranMapViewProps> = ({
@@ -70,13 +68,53 @@ const IranMapView: React.FC<IranMapViewProps> = ({
   seaLabelColor,
   showSeaLabels,
   showIslandLabels,
+  tooltipId,
+  tooltipDisableStyleInjection,
   onAreaClick,
   onAreaHover,
   onIslandClick,
   onCapitalClick,
 }) => {
   const { areas, islands, capitals, waterBodies, landBackgrounds, viewBox, showLabels, mapScale } = model
-  const metrics = getLabelMetrics(mapScale)
+  // Memoized: a new object per render would defeat the memoized islands and capital markers that receive it.
+  const metrics = useMemo(() => getLabelMetrics(mapScale), [mapScale])
+
+  // react-tooltip's `float` mode follows the pointer, which a keyboard focus does not provide.
+  // For keyboard focus the tooltip is pinned just below the focused element instead, and re-pinned on scroll/resize.
+  const [focusPosition, setFocusPosition] = useState<TooltipPosition>()
+  const focusTarget = useRef<Element>()
+  const clearFocusPosition = useCallback(() => {
+    focusTarget.current = undefined
+    setFocusPosition(undefined)
+  }, [])
+  const handleFocus = useCallback((event: React.FocusEvent<SVGSVGElement>) => {
+    const target = (event.target as Element).closest?.('[data-tooltip-id]')
+    if (!target) return
+    let keyboard = true
+    try {
+      keyboard = target.matches(':focus-visible')
+    } catch {
+      // Browsers without :focus-visible (Safari < 15.4, old Chromium): pin it, a pointer focus is rare on these.
+    }
+    if (!keyboard) return
+    focusTarget.current = target
+    setFocusPosition(getPinnedPosition(target))
+  }, [])
+  const pinned = focusPosition !== undefined
+  useEffect(() => {
+    if (!pinned) return
+    const reposition = () => {
+      const target = focusTarget.current
+      if (target?.isConnected) setFocusPosition(getPinnedPosition(target))
+      else clearFocusPosition()
+    }
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [pinned, clearFocusPosition])
 
   return (
     <>
@@ -85,9 +123,12 @@ const IranMapView: React.FC<IranMapViewProps> = ({
         xmlns='http://www.w3.org/2000/svg'
         viewBox={viewBox}
         shapeRendering='geometricPrecision'
-        role='img'
+        role='group'
         aria-label={ariaLabel}
         style={{ width, height: 'auto', color: textColor }}
+        onFocus={tooltipId ? handleFocus : undefined}
+        onBlur={tooltipId ? clearFocusPosition : undefined}
+        onMouseOver={tooltipId && focusPosition ? clearFocusPosition : undefined}
       >
         {showWater && (
           <g className='iran-map-water-layer' aria-hidden='true'>
@@ -129,97 +170,35 @@ const IranMapView: React.FC<IranMapViewProps> = ({
             ))}
           </g>
         )}
-        {areas.map((area, index) => {
-          const tooltip = getAreaTooltip(area, tooltipTitle)
-          return (
-            <path
-              key={`${area.type}:${area.id}:${index}`}
-              d={area.path}
-              fill={getAreaFill(area, selectedAreaId, selectedAreaColor)}
-              fillRule='evenodd'
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              strokeLinejoin='round'
-              strokeLinecap='round'
-              strokeMiterlimit={1}
-              vectorEffect='non-scaling-stroke'
-              tabIndex={0}
-              role='button'
-              aria-pressed={area.id === selectedAreaId}
-              aria-label={tooltip}
-              data-testid={getAreaTestId(area)}
-              data-area-id={area.id}
-              data-area-type={area.type}
-              data-tooltip-id={MAP_TOOLTIP_ID}
-              data-tooltip-content={tooltip}
-              className={MAP_CLASS_NAMES.area}
-              onClick={() => onAreaClick(area)}
-              onMouseEnter={() => onAreaHover(area)}
-              onMouseLeave={() => onAreaHover(null)}
-              onFocus={() => onAreaHover(area)}
-              onBlur={() => onAreaHover(null)}
-              onKeyDown={activate(() => onAreaClick(area))}
-            />
-          )
-        })}
-        {islands.map((island) => {
-          const tooltip = getIslandTooltip(island)
-          return (
-            <g
-              key={island.id}
-              className={MAP_CLASS_NAMES.island}
-              tabIndex={0}
-              role='button'
-              aria-label={tooltip}
-              data-testid={getIslandTestId(island)}
-              data-island-id={island.id}
-              data-province-id={island.provinceId}
-              data-county-id={island.countyId}
-              data-latitude={island.latitude}
-              data-longitude={island.longitude}
-              data-tooltip-id={MAP_TOOLTIP_ID}
-              data-tooltip-content={tooltip}
-              onClick={() => onIslandClick(island)}
-              onMouseEnter={() => onAreaHover(island.area)}
-              onMouseLeave={() => onAreaHover(null)}
-              onFocus={() => onAreaHover(island.area)}
-              onBlur={() => onAreaHover(null)}
-              onKeyDown={activate(() => onIslandClick(island))}
-            >
-              <circle
-                className='iran-map-island-hit'
-                cx={island.labelX}
-                cy={island.labelY}
-                r={metrics.islandHitRadius}
-              />
-              <path
-                className='iran-map-island-shape'
-                d={island.path}
-                fill={getIslandFill(island, selectedAreaId, selectedAreaColor)}
-                fillRule='evenodd'
-                stroke={strokeColor}
-                strokeWidth={strokeWidth}
-                strokeLinejoin='round'
-                strokeLinecap='round'
-                strokeMiterlimit={1}
-                vectorEffect='non-scaling-stroke'
-              />
-              {showIslandLabels && island.featured && (
-                <text
-                  className='iran-map-island-label'
-                  x={island.labelX}
-                  y={island.labelY + metrics.islandLabel.offsetY}
-                  fill={textColor}
-                  textAnchor='middle'
-                  fontSize={metrics.islandLabel.fontSize}
-                  strokeWidth={metrics.islandLabel.strokeWidth}
-                >
-                  {island.faName}
-                </text>
-              )}
-            </g>
-          )
-        })}
+        {areas.map((area, index) => (
+          <AreaPath
+            key={`${area.type}:${area.id}:${index}`}
+            area={area}
+            fill={getAreaFill(area, selectedAreaId, selectedAreaColor)}
+            selected={area.id === selectedAreaId}
+            strokeColor={strokeColor}
+            strokeWidth={strokeWidth}
+            tooltipTitle={tooltipTitle}
+            tooltipId={tooltipId}
+            onClick={onAreaClick}
+            onHover={onAreaHover}
+          />
+        ))}
+        {islands.map((island) => (
+          <IslandPath
+            key={island.id}
+            island={island}
+            fill={getIslandFill(island, selectedAreaId, selectedAreaColor)}
+            metrics={metrics}
+            textColor={textColor}
+            showLabel={showIslandLabels}
+            strokeColor={strokeColor}
+            strokeWidth={strokeWidth}
+            tooltipId={tooltipId}
+            onClick={onIslandClick}
+            onHover={onAreaHover}
+          />
+        ))}
         {showLabels &&
           getProvinceLabelAreas(areas).map((area) => (
             <text
@@ -236,54 +215,35 @@ const IranMapView: React.FC<IranMapViewProps> = ({
               {area.faName}
             </text>
           ))}
-        {capitals.map((capital) => {
-          const geometry = getCapitalMarkerGeometry(capital, capitalMarkerSize, mapScale)
-          const tooltip = getCapitalTooltip(capital)
-          return (
-            <g
-              key={capital.id}
-              className={`${MAP_CLASS_NAMES.capital} iran-map-capital--${capital.areaType}`}
-              transform={`translate(${capital.x} ${capital.y})`}
-              tabIndex={0}
-              role='button'
-              aria-label={tooltip}
-              data-testid={getCapitalTestId(capital)}
-              data-area-id={capital.areaId}
-              data-capital-type={capital.areaType}
-              data-latitude={capital.latitude}
-              data-longitude={capital.longitude}
-              data-tooltip-id={MAP_TOOLTIP_ID}
-              data-tooltip-content={tooltip}
-              onClick={() => onCapitalClick(capital)}
-              onKeyDown={activate(() => onCapitalClick(capital))}
-            >
-              <circle className='iran-map-capital-hit' r={geometry.hitRadius} />
-              <circle className='iran-map-capital-halo' r={geometry.haloRadius} />
-              {geometry.shape === 'diamond' ? (
-                <path className='iran-map-capital-core' d={geometry.diamondPath} fill={capitalMarkerColor} />
-              ) : (
-                <circle className='iran-map-capital-core' r={geometry.coreRadius} fill={capitalMarkerColor} />
-              )}
-              <circle className='iran-map-capital-center' r={geometry.centerRadius} />
-              {showCapitalLabels && (
-                <text
-                  className='iran-map-capital-label'
-                  x={geometry.label.x}
-                  y={geometry.label.y}
-                  fill={textColor}
-                  fontSize={metrics.capitalLabel.fontSize}
-                  strokeWidth={metrics.capitalLabel.strokeWidth}
-                >
-                  {capital.faName}
-                </text>
-              )}
-            </g>
-          )
-        })}
+        {capitals.map((capital) => (
+          <CapitalMarker
+            key={capital.id}
+            capital={capital}
+            mapScale={mapScale}
+            metrics={metrics}
+            markerSize={capitalMarkerSize}
+            markerColor={capitalMarkerColor}
+            textColor={textColor}
+            showLabel={showCapitalLabels}
+            tooltipId={tooltipId}
+            onSelect={onCapitalClick}
+          />
+        ))}
       </svg>
-      <Tooltip id={MAP_TOOLTIP_ID} variant='light' float className={MAP_CLASS_NAMES.tooltip} />
+      {tooltipId && (
+        <Tooltip
+          id={tooltipId}
+          variant='light'
+          float
+          positionStrategy='fixed'
+          position={focusPosition}
+          globalCloseEvents={{ escape: true }}
+          disableStyleInjection={tooltipDisableStyleInjection}
+          className={MAP_CLASS_NAMES.tooltip}
+        />
+      )}
     </>
   )
 }
 
-export default React.memo(IranMapView)
+export default /*#__PURE__*/ React.memo(IranMapView)

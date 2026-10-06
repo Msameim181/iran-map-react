@@ -1,6 +1,6 @@
 {
   "name": "@msameim181/iran-map-react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An interactive and responsive SVG map of Iran for React",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -27,6 +27,27 @@
         "default": "./dist/full.cjs"
       }
     },
+    "./lite": {
+      "import": {
+        "types": "./dist/lite.d.ts",
+        "default": "./dist/lite.js"
+      },
+      "require": {
+        "types": "./dist/lite.d.cts",
+        "default": "./dist/lite.cjs"
+      }
+    },
+    "./score-bands": {
+      "import": {
+        "types": "./dist/score-bands.d.ts",
+        "default": "./dist/score-bands.js"
+      },
+      "require": {
+        "types": "./dist/score-bands.d.cts",
+        "default": "./dist/score-bands.cjs"
+      }
+    },
+    "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"
   },
   "sideEffects": [
@@ -39,7 +60,7 @@
     "README.md"
   ],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "repository": {
     "type": "git",
@@ -49,22 +70,22 @@
   "bugs": {
     "url": "https://github.com/Msameim181/iran-map-react/issues"
   },
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
-    "build": "npm run clean && vite build && npm run build:types",
+    "build": "npm run clean && vite build && node scripts/copy-styles.mjs && npm run build:types",
     "build:types": "tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/finish-types.mjs",
     "typecheck": "tsc --noEmit",
     "demo": "vite --config example/vite.config.ts",
     "demo:build": "vite build --config example/vite.config.ts",
-    "lint": "eslint \"{src,tests,example,scripts}/**/*.{js,mjs,ts,jsx,tsx}\"",
-    "prettier": "prettier --write \"{src,tests,example/src}/**/*.{js,ts,jsx,tsx}\"",
-    "format:check": "prettier --check \"{src,tests,example/src}/**/*.{js,ts,jsx,tsx}\"",
+    "lint": "eslint \"{src,tests,tests-dist,example,scripts}/**/*.{js,mjs,ts,jsx,tsx}\"",
+    "prettier": "prettier --write \"{src,tests,tests-dist,example/src}/**/*.{js,ts,jsx,tsx}\"",
+    "format:check": "prettier --check \"{src,tests,tests-dist,example/src}/**/*.{js,ts,jsx,tsx}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build",
-    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test:dist": "vitest run --config vitest.dist.config.ts",
+    "verify:package": "node scripts/verify-package.mjs",
+    "lint:package": "publint --strict && attw --pack . --exclude-entrypoints ./styles.css"
   },
   "keywords": [
     "map",
@@ -77,13 +98,15 @@
   "author": "Sima Mojtahedi",
   "license": "MIT",
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.14.0",
+    "react-dom": ">=16.14.0"
   },
   "dependencies": {
-    "@msameim181/iran-map-core": "^0.1.0",
+    "@msameim181/iran-map-core": "^0.2.0",
     "react-tooltip": "^5.25.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.10.0",
@@ -92,6 +115,7 @@
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
     "@vitejs/plugin-react": "^5.2.0",
+    "axe-core": "^4.10.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.0.1",
@@ -99,6 +123,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "jsdom": "^26.0.0",
     "prettier": "^3.1.0",
+    "publint": "0.3.25",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rollup": "^4.30.0",
@@ -111,7 +136,16 @@
     "*": {
       "full": [
         "./dist/full.d.ts"
+      ],
+      "lite": [
+        "./dist/lite.d.ts"
+      ],
+      "score-bands": [
+        "./dist/score-bands.d.ts"
       ]
     }
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

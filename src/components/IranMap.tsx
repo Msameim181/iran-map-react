@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SELECTABLE_ELEMENT_SELECTOR,
   buildMapModel,
+  getTooltipId,
   getDeselectProvince,
   iranMapDefaults,
   resolveAreaSelection,
@@ -17,17 +18,43 @@ import type {
   RenderableMapArea,
   RenderableMapIsland,
 } from '@msameim181/iran-map-core'
-import '@msameim181/iran-map-core/styles.css'
 import { warnOnce } from '../devWarn'
+import { sanitizeId, useInstanceId } from '../instanceId'
+import { useIsomorphicLayoutEffect } from '../useIsomorphicLayoutEffect'
 import IranMapView from './IranMapView'
 
 export interface IranMapProps extends IranMapWrapperProps {
-  /** Override the catalogs this map was created with, e.g. to add counties to the lean default. */
-  catalogs?: IranMapCatalogs
+  /**
+   * Catalogs to use instead of the ones this map was created with. Each field replaces the matching default;
+   * fields you leave out keep the default (e.g. `{ counties }` adds counties to the lean map).
+   */
+  catalogs?: Partial<IranMapCatalogs>
+  /** Render the hover/focus tooltip. Default `true`; `false` also drops the `react-tooltip` instance. */
+  tooltip?: boolean
+  /** Tooltip element id. Defaults to a unique id per map; pass a stable one for server rendering under React < 18. */
+  tooltipId?: string
+  /** Forwarded to react-tooltip: `true` stops it injecting its `<style>` tag (strict CSP), `'core'` keeps the core CSS. */
+  tooltipDisableStyleInjection?: boolean | 'core'
 }
 
 const NO_REGIONS: NonNullable<IranMapWrapperProps['regions']> = []
 const NO_COUNTIES: string[] = []
+
+/** Merges field by field so inline `catalogs={{ counties }}` objects do not invalidate the model on every render. */
+const useMergedCatalogs = (defaults: IranMapCatalogs, catalogs?: Partial<IranMapCatalogs>): IranMapCatalogs => {
+  const { provinces, counties, islands, waterBodies, provinceCapitals, countyCapitals } = catalogs ?? {}
+  return useMemo(
+    () => ({
+      provinces: provinces ?? defaults.provinces,
+      counties: counties ?? defaults.counties,
+      islands: islands ?? defaults.islands,
+      waterBodies: waterBodies ?? defaults.waterBodies,
+      provinceCapitals: provinceCapitals ?? defaults.provinceCapitals,
+      countyCapitals: countyCapitals ?? defaults.countyCapitals,
+    }),
+    [defaults, provinces, counties, islands, waterBodies, provinceCapitals, countyCapitals],
+  )
+}
 
 /**
  * Creates an IranMap bound to a default set of catalogs. The root entry binds provinces only;
@@ -70,11 +97,22 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
       showIslands,
       showIslandLabels = iranMapDefaults.showIslandLabels,
       onIslandSelect,
-      catalogs = defaultCatalogs,
+      catalogs: catalogsProp,
+      tooltip = true,
+      tooltipId: tooltipIdProp,
+      tooltipDisableStyleInjection,
     } = props
+    const catalogs = useMergedCatalogs(defaultCatalogs, catalogsProp)
     const selectedAreaColor = resolveSelectedAreaColor(props)
     const [selectedAreaId, setSelectedAreaId] = useState(resolveDefaultSelectedArea(props))
     const wrapperRef = useRef<HTMLDivElement>(null)
+    const instanceId = useInstanceId()
+    // The id lands in CSS attribute selectors, so a custom one is reduced to word characters and hyphens.
+    const tooltipId = tooltip
+      ? tooltipIdProp
+        ? sanitizeId(tooltipIdProp)
+        : getTooltipId(sanitizeId(instanceId))
+      : undefined
 
     const model = useMemo(
       () =>
@@ -121,7 +159,8 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
     }, [model.warnings])
 
     // Consumer callbacks are usually inline and change every render. Reading them through a ref keeps the
-    // handlers below stable, so the memoized view is skipped when only a parent re-renders (e.g. on hover).
+    // handlers below stable, so memoized parts are skipped when only a parent re-renders (e.g. on hover).
+    // The ref is written in a layout effect, not during render, so an abandoned concurrent render cannot leak.
     const callbacks = useRef({
       onSelect,
       onDeselect,
@@ -130,17 +169,40 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
       onCapitalSelect,
       onIslandSelect,
     })
-    callbacks.current = { onSelect, onDeselect, onHover, selectProvinceHandler, onCapitalSelect, onIslandSelect }
+    // The selection is read through a ref for the same reason: handler identity must not change when it does, or every
+    // memoized area would re-render on each click.
+    const selectedRef = useRef(selectedAreaId)
+    useIsomorphicLayoutEffect(() => {
+      callbacks.current = { onSelect, onDeselect, onHover, selectProvinceHandler, onCapitalSelect, onIslandSelect }
+      selectedRef.current = selectedAreaId
+    })
 
     const clearSelection = useCallback(() => {
-      if (selectedAreaId === undefined) return
+      const current = selectedRef.current
+      if (current === undefined) return
       const { onDeselect, onHover, selectProvinceHandler } = callbacks.current
+      selectedRef.current = undefined
       setSelectedAreaId(undefined)
       onDeselect?.()
       onHover?.(null)
-      const province = getDeselectProvince(catalogs.provinces, selectedAreaId)
+      const province = getDeselectProvince(catalogs.provinces, current)
       if (province) selectProvinceHandler?.(province)
-    }, [catalogs.provinces, selectedAreaId])
+    }, [catalogs.provinces])
+
+    // Selection policy: when the selected area leaves the model (mode, focus or data change), it is cleared and
+    // `onDeselect` fires once. A `defaultSelectedArea` that was never in the model is dropped silently.
+    const wasPresent = useRef<string>()
+    useEffect(() => {
+      if (selectedAreaId === undefined) return
+      if (model.areas.some((area) => area.id === selectedAreaId)) {
+        wasPresent.current = selectedAreaId
+      } else if (wasPresent.current === selectedAreaId) {
+        wasPresent.current = undefined
+        clearSelection()
+      } else {
+        setSelectedAreaId(undefined)
+      }
+    }, [clearSelection, model, selectedAreaId])
 
     useEffect(() => {
       const wrapper = wrapperRef.current
@@ -158,16 +220,17 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
 
     const handleSelect = useCallback(
       (area: RenderableMapArea, toggle = true) => {
-        const result = resolveAreaSelection(selectedAreaId, area, toggle)
+        const result = resolveAreaSelection(selectedRef.current, area, toggle)
         if (result.action === 'deselect') {
           clearSelection()
           return
         }
+        selectedRef.current = result.selectedId
         setSelectedAreaId(result.selectedId)
         callbacks.current.onSelect?.(result.area)
         if (result.province) callbacks.current.selectProvinceHandler?.(result.province)
       },
-      [clearSelection, selectedAreaId],
+      [clearSelection],
     )
 
     const handleAreaClick = useCallback((area: RenderableMapArea) => handleSelect(area), [handleSelect])
@@ -192,6 +255,7 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
         ref={wrapperRef}
         className={`iran-map-wrapper ${className}`.trim()}
         style={{ width: width || iranMapDefaults.width }}
+        onKeyDown={selectedAreaId === undefined ? undefined : (event) => event.key === 'Escape' && clearSelection()}
       >
         <IranMapView
           model={model}
@@ -212,10 +276,12 @@ export const createIranMap = (defaultCatalogs: IranMapCatalogs): React.FC<IranMa
           seaLabelColor={seaLabelColor}
           showSeaLabels={showSeaLabels}
           showIslandLabels={showIslandLabels}
+          tooltipId={tooltipId}
+          tooltipDisableStyleInjection={tooltipDisableStyleInjection}
           onAreaClick={handleAreaClick}
           onAreaHover={handleAreaHover}
           onIslandClick={handleIslandSelect}
-          onCapitalClick={handleCapitalSelect}
+          onCapitalClick={onCapitalSelect ? handleCapitalSelect : undefined}
         />
       </div>
     )
