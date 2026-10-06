@@ -1,16 +1,64 @@
 # @msameim181/iran-map-react
 
+@msameim181/iran-map-react is a React SVG map of Iran with provinces, counties, capitals, and Persian names.
+
+## Install
+
+```bash
+npm install @msameim181/iran-map-react
+```
+
+Install from npmjs.com without a token. Requires React and react-dom 16.14+ and Node.js 18+; import the stylesheet once in your app.
+
+```tsx
+import React from 'react'
+import { IranMap } from '@msameim181/iran-map-react'
+import '@msameim181/iran-map-react/styles.css'
+
+const provinceData = { tehran: 55 }
+
+export function ProvinceMap() {
+  return <IranMap data={provinceData} mode='province' capitalMarkers='province' />
+}
+```
+
+The root entry includes provinces and province capitals. Use `/full`, `/lite`, or supplied `catalogs` for counties, county capitals, islands, and seas.
+
+## Comparison
+
+### Compared with `react-iran-map`
+
+This family was split from the original MIT-licensed `react-iran-map` project. It separates framework-free data and logic into `@msameim181/iran-map-core`, with scoped React and Vue packages. The React package provides:
+
+- TypeScript declarations and ESM/CJS exports; SSR-safe JavaScript imports with explicit CSS loading.
+- Tree-shaking, a lean root entry, full catalogs through `/full`, and a catalog-free `/score-bands` entry.
+- Lite data through `/lite`; standard and mini presets through core catalogs or `createIranMap`.
+- Province and county maps, capital markers, islands, seas, configurable tooltips, keyboard selection, and accessible labels.
+- npm releases with provenance from version 0.2.1, alongside GitHub Packages releases.
+
+See [migration notes](#migrating-from-react-iran-map) and [CHANGELOG.md](CHANGELOG.md) for recorded behavior changes.
+
+### Compared with raw GeoJSON, Natural Earth, or OSM files
+
+For applications starting from raw geographic files, this package supplies ready SVG paths in a `1000 × 825` coordinate space, catalog IDs, Persian and English names, selection callbacks, and gradient or color-band logic. Data sources and licenses are listed in [NOTICE](NOTICE); focused views fit their own view box.
+
+## Package family
+
+- [@msameim181/iran-map-core](https://github.com/Msameim181/iran-map-core): framework-free data and logic; [data-level comparison](https://msameim181.github.io/iran-map-core/).
+- [@msameim181/iran-map-react](https://github.com/Msameim181/iran-map-react): React components; [live demo](https://msameim181.github.io/iran-map-react/).
+- [@msameim181/iran-map-vue](https://github.com/Msameim181/iran-map-vue): Vue components; [live demo](https://msameim181.github.io/iran-map-vue/).
+
+نقشه ایران برای React با نمایش استان، شهرستان و مراکز استان، نام‌های فارسی و رنگ‌بندی داده‌ها در یک نقشه تعاملی.
+
+## Overview
+
 Interactive, responsive SVG map of Iran for React: 31 provinces, 478 counties, custom regions, choropleth color bands, capital markers, seas and islands. A thin React layer over [`@msameim181/iran-map-core`](https://github.com/Msameim181/iran-map-core), which owns the data and all the logic.
 
 [**Open the live demo →**](https://msameim181.github.io/iran-map-react/)
 
 ![Demo showing province colors, selected county detail, capital markers, surrounding seas and islands](docs/images/demo-mixed.webp)
 
-## Installation
-
-```bash
-npm install @msameim181/iran-map-react
-```
+## Installation details
 
 The package is published to [npmjs.com](https://www.npmjs.com/package/@msameim181/iran-map-react) (releases from 0.2.1 on carry npm provenance), so no registry configuration or token is needed. Each release is also published to **GitHub Packages**; to install from there, add `@msameim181:registry=https://npm.pkg.github.com` to your project's `.npmrc` and a `read:packages` token for `//npm.pkg.github.com/:_authToken=` to your user-level `~/.npmrc` (GitHub Packages requires authentication even for public packages).
 

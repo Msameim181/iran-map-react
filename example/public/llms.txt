@@ -1,0 +1,53 @@
+# @msameim181/iran-map-react
+
+> React SVG map of Iran with provinces, counties, capitals, Persian and English names, selection, and choropleth colors.
+
+This is the React package in a family with @msameim181/iran-map-core (framework-free data and logic) and @msameim181/iran-map-vue (Vue components). Read the README for props and the CHANGELOG for migration behavior.
+
+Install with `npm install @msameim181/iran-map-react` from npmjs.com; no token is needed. Requires React and react-dom 16.14+ and Node.js 18+. Import `@msameim181/iran-map-react/styles.css` explicitly once in your app.
+
+The root entry binds provinces and province capitals. `/full` binds every catalog; `/lite` binds every catalog at lite detail. Standard and mini levels use core presets through `catalogs` or `createIranMap`. `/score-bands` contains the standalone legend/editor without map data. Keep data and array props referentially stable. Server rendering is supported; under React < 18, pass a stable `tooltipId` for hydration.
+
+نقشه ایران برای React با استان، شهرستان، مراکز استان و نام‌های فارسی برای ساخت نقشه تعاملی.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/Msameim181/iran-map-react/main/README.md): Usage, props, data levels, SSR, and migration.
+- [CHANGELOG](https://raw.githubusercontent.com/Msameim181/iran-map-react/main/CHANGELOG.md): Release history and behavior changes.
+- [Main props](https://github.com/Msameim181/iran-map-react/blob/main/README.md#main-props): IranMap prop table.
+- [IranMapProps and createIranMap](https://github.com/Msameim181/iran-map-react/blob/main/src/components/IranMap.tsx): React-specific props and catalog binding.
+- [Root API](https://github.com/Msameim181/iran-map-react/blob/main/src/index.ts): Lean exports and public types.
+- [Full API](https://github.com/Msameim181/iran-map-react/blob/main/src/full.ts): Every catalog and map exports.
+- [Lite API](https://github.com/Msameim181/iran-map-react/blob/main/src/lite.ts): Lite catalogs and map exports.
+- [ScoreBands API](https://github.com/Msameim181/iran-map-react/blob/main/src/score-bands.ts): Catalog-free legend/editor exports.
+- [ScoreBands props](https://github.com/Msameim181/iran-map-react/blob/main/README.md#standalone-score-band-legend-and-editor): Legend and editor usage.
+
+## Install
+
+- [npm package](https://www.npmjs.com/package/@msameim181/iran-map-react): Public npm installation without a token.
+- [Install and minimal usage](https://github.com/Msameim181/iran-map-react/blob/main/README.md#install): Package and stylesheet imports.
+- [Export map and peer dependencies](https://github.com/Msameim181/iran-map-react/blob/main/package.json): Supported import paths and scripts.
+
+## Examples
+
+- [React live demo](https://msameim181.github.io/iran-map-react/): Province, county, region, mixed, focus, and data-level views.
+- [Demo source](https://github.com/Msameim181/iran-map-react/blob/main/example/src/App.tsx): Shared data and color-band state.
+- [Demo entry](https://github.com/Msameim181/iran-map-react/blob/main/example/src/main.tsx): Explicit stylesheet loading.
+- [Lean entry tests](https://github.com/Msameim181/iran-map-react/blob/main/tests/lean.test.tsx): Province selection and custom catalogs.
+- [SSR tests](https://github.com/Msameim181/iran-map-react/blob/main/tests/ssr.test.tsx): Server rendering with the real tooltip dependency.
+
+## Related packages
+
+- [Core repository](https://github.com/Msameim181/iran-map-core): Framework-free data and map logic.
+- [Core npm package](https://www.npmjs.com/package/@msameim181/iran-map-core): Data and logic dependency.
+- [Data-level comparison](https://msameim181.github.io/iran-map-core/): Full, standard, lite, and mini geometry.
+- [Vue repository](https://github.com/Msameim181/iran-map-vue): Vue components using core.
+- [Vue npm package](https://www.npmjs.com/package/@msameim181/iran-map-vue): Vue counterpart.
+- [Vue live demo](https://msameim181.github.io/iran-map-vue/): Vue map examples.
+
+## Optional
+
+- [Agent guide](https://raw.githubusercontent.com/Msameim181/iran-map-react/main/AGENTS.md): Repository commands and contributor rules.
+- [NOTICE](https://raw.githubusercontent.com/Msameim181/iran-map-react/main/NOTICE): Geographic data sources and licenses.
+- [MIT license](https://raw.githubusercontent.com/Msameim181/iran-map-react/main/LICENSE): Application code license.
+- [Release workflow](https://github.com/Msameim181/iran-map-react/blob/main/.github/workflows/release.yml): Tag verification, registries, and provenance.
