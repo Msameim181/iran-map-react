@@ -22,6 +22,7 @@ const client: { createRoot?: (el: HTMLElement) => Root } | undefined = await imp
   /* @vite-ignore */ clientModule
 ).catch(() => undefined)
 
+/* eslint-disable react/no-deprecated -- ReactDOM.render is the only API on React 16 and 17 */
 const createRoot = (container: HTMLElement): Root => {
   if (client?.createRoot) return client.createRoot(container)
   return {
@@ -29,6 +30,8 @@ const createRoot = (container: HTMLElement): Root => {
     unmount: () => void ReactDOM.unmountComponentAtNode(container),
   }
 }
+
+/* eslint-enable react/no-deprecated */
 
 const mounted: Array<{ root: Root; container: HTMLElement }> = []
 const mount = (element: React.ReactElement) => {
